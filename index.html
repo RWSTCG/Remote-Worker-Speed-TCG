@@ -3819,6 +3819,7 @@ using (true);
 
       updateCollectedPanel();
       updateBulkScrapButton();
+      updateBulkScrapMainButton();
     }
 
     function showCorrectScreen(){
@@ -4275,11 +4276,15 @@ using (true);
       const total = totalScrapValue();
       const btn = document.getElementById("bulkScrapMainBtn");
       const value = document.getElementById("bulkScrapMainValue");
+
       if(!btn) return;
+
       if(value) value.textContent = `+${total} COINS`;
       else btn.innerHTML = `♻ SCRAP ALL DUPLICATES<br><span id="bulkScrapMainValue">+${total} COINS</span>`;
+
       btn.disabled = total <= 0;
       btn.style.opacity = total <= 0 ? ".55" : "1";
+      btn.style.pointerEvents = total <= 0 ? "none" : "auto";
     }
 
     function updateBulkScrapButton(){
@@ -4316,6 +4321,7 @@ using (true);
       save();
       updateCoins();
       updateBulkScrapButton();
+      updateBulkScrapMainButton();
       if(!document.getElementById("albumScreen").classList.contains("hidden")){
         renderAlbum();
       }
@@ -4373,7 +4379,6 @@ using (true);
     if(albumBulkScrapBtn) albumBulkScrapBtn.addEventListener("click", scrapAllDuplicates);
     const bulkScrapMainBtn = document.getElementById("bulkScrapMainBtn");
     if(bulkScrapMainBtn) bulkScrapMainBtn.addEventListener("click", scrapAllDuplicates);
-    document.getElementById("bulkScrapMainBtn").addEventListener("click", scrapAllDuplicates);
     document.getElementById("newRunBtn").addEventListener("click", startNextRun);
     document.getElementById("resetBtn").addEventListener("click",()=>{
       if(confirm("Profil wirklich löschen?")){
