@@ -2458,6 +2458,38 @@
   border: 1px solid rgba(248,113,113,.35);
   text-shadow: 0 0 10px rgba(239,68,68,.45);
 }
+
+.badluck-panel-content {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.badluck-info-btn {
+  width:18px !important;
+  height:18px !important;
+  min-width:18px !important;
+  min-height:18px !important;
+  margin:0 !important;
+  padding:0 !important;
+  border-radius:999px !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:11px !important;
+  font-weight:950 !important;
+  line-height:1 !important;
+  color:#0f172a !important;
+  background:linear-gradient(135deg,#38bdf8,#facc15) !important;
+  border:1px solid rgba(255,255,255,.55) !important;
+  box-shadow:0 0 12px rgba(56,189,248,.35) !important;
+  cursor:pointer !important;
+  text-shadow:none !important;
+}
+.badluck-info-btn:hover {
+  transform:translateY(-1px);
+  filter:brightness(1.12);
+}
 .slot-rarity {
   margin-top: 2px;
   font-size: 9px;
@@ -4086,7 +4118,7 @@ using (true);
             <div class="legendary">0/1 Legendary</div>
           </div>
         </div>
-        <div class="badluck-panel" id="badLuckPanel">T0: 0% Bad Luck Affix</div>
+        <div class="badluck-panel" id="badLuckPanel"><span class="badluck-panel-content">T0: 0% Bad Luck Affix <button type="button" class="badluck-info-btn" id="badLuckInfoBtn" aria-label="Bad Luck Affix info">?</button></span></div>
         <div class="tier-time-history" id="tierTimeHistory"></div>
       </div>
 
@@ -4150,7 +4182,7 @@ using (true);
             <button class="secondary" id="albumBtn">▣ CHECK MY COLLECTION</button>
             <div class="fake-productivity-row">
               <button class="secondary" id="playMiniBtn">FAKE PRODUCTIVITY (+250)</button>
-              <button id="speedBoostBtn" class="speed-boost-btn"><span>OPEN AD</span><span>x3 SPEED<br>10 MINS</span></button>
+              <button id="speedBoostBtn" class="speed-boost-btn"><span>OPEN AD</span><span>x3 SPEED<br>3 MINS</span></button>
             </div>
           </div>
 
@@ -4398,9 +4430,13 @@ using (true);
     let tierTimes = JSON.parse(localStorage.getItem("tierTimes") || "[]");
     const COIN_COOLDOWN_MS = 30000;
     const BOOSTED_COIN_COOLDOWN_MS = 10000;
-    const SPEED_BOOST_DURATION_MS = 10 * 60 * 1000;
+    const SPEED_BOOST_DURATION_MS = 3 * 60 * 1000;
 
     let speedBoostUntil = Number(localStorage.getItem("speedBoostUntil")) || 0;
+    if(speedBoostUntil > Date.now() + SPEED_BOOST_DURATION_MS){
+      speedBoostUntil = Date.now() + SPEED_BOOST_DURATION_MS;
+      localStorage.setItem("speedBoostUntil", speedBoostUntil);
+    }
 
     const SUPABASE_REST_URL = "https://mjqvpjixklpovdqgybzc.supabase.co/rest/v1";
     const SUPABASE_KEY = "sb_publishable_Ryn7nKGz4MBUFQoKQZ7j8Q_nIsWb3-l";
@@ -4523,6 +4559,12 @@ using (true);
       }, 1800);
     }
 
+    function showBadLuckInfo(){
+      playSound("click");
+      showToast("Each T-level reduces Rare, Epic and Legendary odds by 5%. Lost odds move into Common cards.");
+    }
+
+
     function showPullEffect(robot){
       playRaritySound(robot);
       if(!["epic", "legendary"].includes(robot.rarity)) return;
@@ -4636,7 +4678,7 @@ using (true);
 
     function updateBadLuckUI(){
       const panel = document.getElementById("badLuckPanel");
-      if(panel) panel.textContent = `T${badLuckTier}: ${badLuckTier * 5}% Bad Luck Affix`;
+      if(panel) panel.innerHTML = `<span class="badluck-panel-content">T${badLuckTier}: ${badLuckTier * 5}% Bad Luck Affix <button type="button" class="badluck-info-btn" id="badLuckInfoBtn" aria-label="Bad Luck Affix info">?</button></span>`;
       updatePackChanceLabels();
     }
 
@@ -5038,7 +5080,7 @@ using (true);
       updateSpeedBoostButton();
       updateCooldownUI();
 
-      showToast("x3 SPEED activated · 10s Fake Productivity cooldown for 10 minutes");
+      showToast("x3 SPEED activated · 10s Fake Productivity cooldown for 3 minutes");
     }
 
     function updateSpeedBoostButton(){
@@ -5053,11 +5095,11 @@ using (true);
         btn.setAttribute("aria-disabled", "true");
         btn.title = "x3 SPEED is already active";
       } else {
-        btn.innerHTML = `<span>OPEN AD</span><span>x3 SPEED<br>10 MINS</span>`;
+        btn.innerHTML = `<span>OPEN AD</span><span>x3 SPEED<br>3 MINS</span>`;
         btn.classList.remove("active", "speed-locked");
         btn.disabled = false;
         btn.removeAttribute("aria-disabled");
-        btn.title = "Watch an ad to activate x3 fake productivity speed";
+        btn.title = "Open an ad to activate x3 fake productivity speed for 3 minutes";
       }
     }
 
@@ -5666,6 +5708,14 @@ using (true);
       if(confirm("Profil wirklich löschen?")){
         localStorage.clear();
         location.reload();
+      }
+    });
+
+    document.addEventListener("click", (event)=>{
+      if(event.target && event.target.closest("#badLuckInfoBtn")){
+        event.preventDefault();
+        event.stopPropagation();
+        showBadLuckInfo();
       }
     });
 
