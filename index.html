@@ -3193,6 +3193,25 @@ body{
   }
 }
 
+
+/* v68 achievement fix: rarity-based achievement states */
+.setbox.achievement-open {
+  border-color: rgba(148,163,184,.24) !important;
+  color: #cbd5e1 !important;
+}
+
+.setbox.achievement-ready {
+  border-color: rgba(250,204,21,.72) !important;
+  color: #fef3c7 !important;
+  box-shadow: 0 0 22px rgba(250,204,21,.22) !important;
+}
+
+.setbox.achievement-claimed {
+  border-color: rgba(34,197,94,.62) !important;
+  color: #bbf7d0 !important;
+  box-shadow: 0 0 22px rgba(34,197,94,.18) !important;
+}
+
 </style>
 <!--
 Supabase SQL needed:
@@ -3822,6 +3841,13 @@ using (true);
       updateBulkScrapMainButton();
     }
 
+
+    function migrateAchievementKeys(){
+      if(claimed["1-10"] && !claimed["all-common"]) claimed["all-common"] = true;
+      if(claimed["11-20"] && !claimed["all-rare"]) claimed["all-rare"] = true;
+      if(claimed["21-30"] && !claimed["all-epic"]) claimed["all-epic"] = true;
+    }
+
     function showCorrectScreen(){
       if(playerName){
         document.getElementById("loginScreen").classList.add("hidden");
@@ -4233,6 +4259,12 @@ using (true);
       return true;
     }
 
+    function hasRarity(rarity){
+      return robots
+        .filter(robot => robot.rarity === rarity)
+        .every(robot => !!collection[robot.number]);
+    }
+
     function scrapValue(robot){
       if(robot.rarity === "common") return 12;
       if(robot.rarity === "uncommon") return 25;
@@ -4330,28 +4362,69 @@ using (true);
     }
 
     function checkBonuses(){
-      if(hasRange(1,10) && !claimed["1-10"]){
-        coins += 500; claimed["1-10"] = true;
-        alert("Set 1–10 komplett! +500 Coins und Avatar Stufe 1!");
+      let earned = [];
+
+      if(hasRarity("common") && !claimed["all-common"]){
+        coins += 500;
+        claimed["all-common"] = true;
+        earned.push("Collect all Common Cards: +500 Coins");
       }
-      if(hasRange(11,20) && !claimed["11-20"]){
-        coins += 1000; claimed["11-20"] = true;
-        alert("Set 11–20 komplett! +1000 Coins und Avatar Stufe 2!");
+
+      if(hasRarity("rare") && !claimed["all-rare"]){
+        coins += 1000;
+        claimed["all-rare"] = true;
+        earned.push("Collect all Rare Cards: +1000 Coins");
       }
-      if(hasRange(21,30) && !claimed["21-30"]){
-        coins += 2500; claimed["21-30"] = true;
-        alert("Set 21–30 komplett! +2500 Coins und Avatar Stufe 3!");
+
+      if(hasRarity("epic") && !claimed["all-epic"]){
+        coins += 2500;
+        claimed["all-epic"] = true;
+        earned.push("Collect all Epic Cards: +2500 Coins");
+      }
+
+      if(earned.length){
+        save();
+        updateSetBoxes();
+        updateCollectedPanel();
+        showToast(`Achievement unlocked! ${earned.join(" · ")}`);
       }
     }
 
     function updateSetBoxes(){
-      const reward1 = "+500 Coins";
-      const reward2 = "+1000 Coins";
-      const reward3 = "+2500 Coins";
+      const achievements = [
+        {
+          id: "set1",
+          key: "all-common",
+          title: "Collect all Common Cards",
+          reward: "+500 Coins",
+          done: hasRarity("common")
+        },
+        {
+          id: "set2",
+          key: "all-rare",
+          title: "Collect all Rare Cards",
+          reward: "+1000 Coins",
+          done: hasRarity("rare")
+        },
+        {
+          id: "set3",
+          key: "all-epic",
+          title: "Collect all Epic Cards",
+          reward: "+2500 Coins",
+          done: hasRarity("epic")
+        }
+      ];
 
-      document.getElementById("set1").innerHTML = `Collect all Common Cards<br>Reward: ${reward1} · ${claimed["all-common"] ? "✅ claimed" : hasRarity("common") ? "ready" : "open"}`;
-      document.getElementById("set2").innerHTML = `Collect all Rare Cards<br>Reward: ${reward2} · ${claimed["all-rare"] ? "✅ claimed" : hasRarity("rare") ? "ready" : "open"}`;
-      document.getElementById("set3").innerHTML = `Collect all Epic Cards<br>Reward: ${reward3} · ${claimed["all-epic"] ? "✅ claimed" : hasRarity("epic") ? "ready" : "open"}`;
+      achievements.forEach(achievement=>{
+        const box = document.getElementById(achievement.id);
+        if(!box) return;
+
+        const isClaimed = !!claimed[achievement.key];
+        box.classList.remove("achievement-open", "achievement-ready", "achievement-claimed");
+        box.classList.add(isClaimed ? "achievement-claimed" : achievement.done ? "achievement-ready" : "achievement-open");
+
+        box.innerHTML = `${achievement.title}<br>Reward: ${achievement.reward} · ${isClaimed ? "✅ claimed" : achievement.done ? "ready" : "open"}`;
+      });
     }
 
     document.getElementById("startBtn").addEventListener("click",()=>{
@@ -4359,7 +4432,8 @@ using (true);
       if(!n) return alert("Bitte Spielernamen eingeben.");
       playerName = n;
       save();
-      showCorrectScreen();
+      migrateAchievementKeys();
+    showCorrectScreen();
     updatePackUI();
     updateCooldownUI();
     updateRunTimer();
