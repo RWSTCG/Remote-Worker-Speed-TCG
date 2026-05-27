@@ -3557,7 +3557,7 @@ body{
 }
 
 
-/* v75 final Fake Productivity + Watch Ad layout */
+/* v75 final Fake Productivity + Open Ad layout */
 #mainScreen .fake-productivity-row{
   display:grid !important;
   grid-template-columns:minmax(0, 1fr) 118px !important;
@@ -3667,7 +3667,7 @@ body{
 }
 
 
-/* v76: wide Fake Productivity + right-aligned small Watch Ad button */
+/* v76: wide Fake Productivity + right-aligned small Open Ad button */
 
 #mainScreen .fake-productivity-row{
   display:grid !important;
@@ -3703,7 +3703,7 @@ body{
   line-height:1 !important;
 }
 
-/* RIGHT: Watch Ad stays small and aligns with the right edge */
+/* RIGHT: Open Ad stays small and aligns with the right edge */
 #mainScreen #speedBoostBtn{
   grid-column:2 !important;
   order:2 !important;
@@ -4074,7 +4074,7 @@ using (true);
             <button class="secondary" id="albumBtn">▣ CHECK MY COLLECTION</button>
             <div class="fake-productivity-row">
               <button class="secondary" id="playMiniBtn">FAKE PRODUCTIVITY (+250)</button>
-              <button id="speedBoostBtn" class="speed-boost-btn"><span>WATCH AD</span><span>x3 SPEED<br>10 MINS</span></button>
+              <button id="speedBoostBtn" class="speed-boost-btn"><span>OPEN AD</span><span>x3 SPEED<br>10 MINS</span></button>
             </div>
           </div>
 
@@ -4095,7 +4095,7 @@ using (true);
         <div class="panel leaderboard-panel">
           <h2>Global Leaderboard</h2>
           <div class="small leaderboard-note">
-            Top 10 Spieler nach höchster geschaffter T-Stufe und Gesamtzeit bis dahin.
+            Top 10 players ranked by highest completed T-level and total completion time.
           </div>
 
           <div class="my-rank-card" id="myRankCard">
@@ -4805,7 +4805,7 @@ using (true);
         btn.setAttribute("aria-disabled", "true");
         btn.title = "x3 SPEED is already active";
       } else {
-        btn.innerHTML = `<span>WATCH AD</span><span>x3 SPEED<br>10 MINS</span>`;
+        btn.innerHTML = `<span>OPEN AD</span><span>x3 SPEED<br>10 MINS</span>`;
         btn.classList.remove("active", "speed-locked");
         btn.disabled = false;
         btn.removeAttribute("aria-disabled");
