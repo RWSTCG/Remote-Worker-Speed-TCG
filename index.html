@@ -3194,6 +3194,31 @@ body{
 }
 
 </style>
+<!--
+Supabase SQL needed:
+
+create table if not exists leaderboard (
+  id uuid primary key default gen_random_uuid(),
+  username text not null unique,
+  max_tier int not null default 0,
+  total_time bigint not null default 0,
+  updated_at timestamp with time zone default now()
+);
+
+alter table leaderboard enable row level security;
+
+create policy "Anyone can read leaderboard"
+on leaderboard for select
+using (true);
+
+create policy "Anyone can insert leaderboard"
+on leaderboard for insert
+with check (true);
+
+create policy "Anyone can update leaderboard"
+on leaderboard for update
+using (true);
+-->
 </head>
 <body>
   <div class="app">
@@ -3309,7 +3334,7 @@ body{
         <div class="panel leaderboard-panel">
           <h2>Global Leaderboard</h2>
           <div class="small leaderboard-note">
-            Top 10 Spieler nach höchster T-Stufe und Gesamtzeit bis dahin.
+            Top 10 Spieler nach höchster geschaffter T-Stufe und Gesamtzeit bis dahin.
           </div>
 
           <div class="my-rank-card" id="myRankCard">
@@ -3378,6 +3403,10 @@ body{
     let badLuckTier = Number(localStorage.getItem("badLuckTier")) || 0;
     let tierTimes = JSON.parse(localStorage.getItem("tierTimes") || "[]");
     const COIN_COOLDOWN_MS = 30000;
+
+    const SUPABASE_REST_URL = "https://mjqvpjixklpovdqgybzc.supabase.co/rest/v1";
+    const SUPABASE_KEY = "sb_publishable_Ryn7nKGz4MBUFQoKQZ7j8Q_nIsWb3-l";
+    const LEADERBOARD_TABLE = "leaderboard";
 
     let selectedPack = "basic";
     let pendingPull = [];
@@ -3692,6 +3721,7 @@ body{
       save();
       showCongratulations();
       showToast(`T${badLuckTier} complete! Time: ${formatTime(tierTimes[badLuckTier])}`);
+      submitLeaderboardScore().catch(console.warn);
       updateRunTimer();
     }
 
@@ -3992,75 +4022,169 @@ body{
       return tierTimes.reduce((sum, ms)=>sum + (Number(ms) || 0), 0);
     }
 
-    function getLocalLeaderboardEntry(){
+    function completedTierForLeaderboard(){
+      if(!tierTimes || tierTimes.length === 0) return -1;
+      return tierTimes.length - 1;
+    }
+
+    function leaderboardHeaders(extra = {}){
       return {
-        username: playerName || "Anonymous",
-        maxTier: Math.max(0, badLuckTier - (completionTime ? 0 : 0)),
-        completedTiers: tierTimes ? tierTimes.length : 0,
-        totalTime: totalCompletedTimeForLeaderboard(),
-        isMe: true
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+        ...extra
       };
     }
 
-    function demoLeaderboardRows(){
-      const me = getLocalLeaderboardEntry();
+    async function fetchLeaderboardRows(){
+      const url = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?select=username,max_tier,total_time,updated_at&order=max_tier.desc,total_time.asc&limit=200`;
 
-      const demo = [
-        { username:"CoffeeNinja", completedTiers:7, totalTime: 1000 * 60 * 60 * 7 + 1000 * 60 * 12 },
-        { username:"SpreadsheetLord", completedTiers:5, totalTime: 1000 * 60 * 60 * 6 + 1000 * 60 * 31 },
-        { username:"MuteButtonHero", completedTiers:4, totalTime: 1000 * 60 * 60 * 4 + 1000 * 60 * 58 },
-        { username:"SnackDrawerPro", completedTiers:3, totalTime: 1000 * 60 * 60 * 3 + 1000 * 60 * 44 },
-        { username:"VPNWizard", completedTiers:2, totalTime: 1000 * 60 * 60 * 2 + 1000 * 60 * 19 }
-      ];
+      const response = await fetch(url, {
+        method: "GET",
+        headers: leaderboardHeaders()
+      });
 
-      const rows = [...demo, me]
-        .filter(row=>row.completedTiers > 0 || row.isMe)
-        .sort((a,b)=>{
-          if(b.completedTiers !== a.completedTiers) return b.completedTiers - a.completedTiers;
-          return a.totalTime - b.totalTime;
-        })
-        .map((row,index)=>({...row, rank:index + 1}));
+      if(!response.ok){
+        const err = await response.text();
+        throw new Error(err || "Leaderboard load failed");
+      }
 
-      return rows;
+      const rows = await response.json();
+
+      return rows.map(row=>({
+        username: row.username || "Anonymous",
+        completedTiers: Number(row.max_tier) + 1,
+        maxTier: Number(row.max_tier),
+        totalTime: Number(row.total_time) || 0,
+        updatedAt: row.updated_at
+      }));
     }
 
-    function renderLeaderboard(){
+    async function submitLeaderboardScore(){
+      const maxTier = completedTierForLeaderboard();
+      if(maxTier < 0) return;
+
+      const totalTime = totalCompletedTimeForLeaderboard();
+      const username = playerName || "Anonymous";
+
+      const existingUrl = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?select=id,username,max_tier,total_time&username=eq.${encodeURIComponent(username)}&limit=1`;
+
+      const existingResponse = await fetch(existingUrl, {
+        method: "GET",
+        headers: leaderboardHeaders()
+      });
+
+      if(!existingResponse.ok){
+        console.warn("Leaderboard check failed:", await existingResponse.text());
+        return;
+      }
+
+      const existing = await existingResponse.json();
+
+      if(existing.length){
+        const current = existing[0];
+        const oldTier = Number(current.max_tier);
+        const oldTime = Number(current.total_time);
+
+        const isBetter = maxTier > oldTier || (maxTier === oldTier && totalTime < oldTime);
+
+        if(!isBetter) return;
+
+        const updateUrl = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?id=eq.${current.id}`;
+
+        const updateResponse = await fetch(updateUrl, {
+          method: "PATCH",
+          headers: leaderboardHeaders(),
+          body: JSON.stringify({
+            max_tier: maxTier,
+            total_time: totalTime,
+            updated_at: new Date().toISOString()
+          })
+        });
+
+        if(!updateResponse.ok){
+          console.warn("Leaderboard update failed:", await updateResponse.text());
+        }
+
+        return;
+      }
+
+      const insertResponse = await fetch(`${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}`, {
+        method: "POST",
+        headers: leaderboardHeaders(),
+        body: JSON.stringify({
+          username,
+          max_tier: maxTier,
+          total_time: totalTime,
+          updated_at: new Date().toISOString()
+        })
+      });
+
+      if(!insertResponse.ok){
+        console.warn("Leaderboard insert failed:", await insertResponse.text());
+      }
+    }
+
+    async function renderLeaderboard(){
       const list = document.getElementById("leaderboardList");
       const myRank = document.getElementById("myRankCard");
       if(!list || !myRank) return;
 
-      const rows = demoLeaderboardRows();
-      const me = rows.find(row=>row.isMe);
+      list.innerHTML = `<div class="leaderboard-empty">Loading global leaderboard...</div>`;
+      myRank.textContent = "Your Position: loading...";
 
-      myRank.textContent = me
-        ? `Your Position: #${me.rank} · T${Math.max(0, me.completedTiers - 1)} · ${formatTime(me.totalTime)} total`
-        : "Your Position: —";
+      try{
+        const rows = await fetchLeaderboardRows();
 
-      const top10 = rows.slice(0,10);
+        const sorted = rows
+          .sort((a,b)=>{
+            if(b.maxTier !== a.maxTier) return b.maxTier - a.maxTier;
+            return a.totalTime - b.totalTime;
+          })
+          .map((row,index)=>({...row, rank:index + 1, isMe: row.username === playerName}));
 
-      if(top10.length === 0){
-        list.innerHTML = `<div class="leaderboard-empty">Noch keine Einträge vorhanden.</div>`;
-        return;
-      }
+        const me = sorted.find(row=>row.username === playerName);
 
-      list.innerHTML = top10.map(row=>`
-        <div class="leaderboard-row ${row.isMe ? "me" : ""}">
-          <div class="leaderboard-rank">#${row.rank}</div>
-          <div class="leaderboard-name">${row.username}</div>
-          <div class="leaderboard-score">
-            <div>T${Math.max(0, row.completedTiers - 1)}</div>
-            <div>${formatTime(row.totalTime)}</div>
+        myRank.textContent = me
+          ? `Your Position: #${me.rank} · T${me.maxTier} · ${formatTime(me.totalTime)} total`
+          : "Your Position: not ranked yet";
+
+        const top10 = sorted.slice(0,10);
+
+        if(top10.length === 0){
+          list.innerHTML = `<div class="leaderboard-empty">Noch keine globalen Einträge vorhanden.</div>`;
+          return;
+        }
+
+        list.innerHTML = top10.map(row=>`
+          <div class="leaderboard-row ${row.isMe ? "me" : ""}">
+            <div class="leaderboard-rank">#${row.rank}</div>
+            <div class="leaderboard-name">${row.username}</div>
+            <div class="leaderboard-score">
+              <div>T${row.maxTier}</div>
+              <div>${formatTime(row.totalTime)}</div>
+            </div>
           </div>
-        </div>
-      `).join("");
+        `).join("");
+      }catch(error){
+        console.warn(error);
+        myRank.textContent = "Your Position: unavailable";
+        list.innerHTML = `
+          <div class="leaderboard-empty">
+            Leaderboard konnte nicht geladen werden.<br>
+            Prüfe Supabase Tabelle + RLS Policies.
+          </div>
+        `;
+      }
     }
 
-    function showLeaderboard(){
+    async function showLeaderboard(){
       document.getElementById("mainScreen").classList.add("hidden");
       document.getElementById("albumScreen").classList.add("hidden");
       document.getElementById("leaderboardScreen").classList.remove("hidden");
       document.getElementById("topBackArrow").style.display = "flex";
-      renderLeaderboard();
+      await renderLeaderboard();
     }
 
     function showAlbum(){
