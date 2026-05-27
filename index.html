@@ -3981,6 +3981,49 @@ body{
   box-shadow:0 0 28px rgba(99,102,241,.45), 0 10px 30px rgba(34,211,238,.22) !important;
 }
 
+
+
+/* v78 WebAudio sound system + global mute button */
+.sound-toggle{
+  position:fixed;
+  right:14px;
+  bottom:58px;
+  width:auto;
+  min-width:46px;
+  height:38px;
+  margin:0;
+  padding:8px 11px;
+  border-radius:13px;
+  border:1px solid rgba(34,211,238,.34);
+  background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,64,175,.72));
+  color:white;
+  font-size:16px;
+  line-height:1;
+  box-shadow:0 0 18px rgba(34,211,238,.22),0 8px 24px rgba(0,0,0,.35);
+  z-index:80;
+  cursor:pointer;
+}
+.sound-toggle:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.12);
+}
+.sound-toggle.sound-muted{
+  opacity:.72;
+  filter:grayscale(.35);
+  border-color:rgba(148,163,184,.3);
+  background:linear-gradient(135deg,rgba(15,23,42,.86),rgba(51,65,85,.72));
+}
+@media (max-width:700px){
+  .sound-toggle{
+    right:10px;
+    bottom:54px;
+    height:34px;
+    min-width:42px;
+    font-size:14px;
+    padding:7px 9px;
+  }
+}
+
 </style>
 <!--
 Supabase SQL needed:
@@ -4156,6 +4199,7 @@ using (true);
   </div>
 
   <button class="reset-corner" id="resetBtn">Reset</button>
+  <button class="sound-toggle" id="soundToggle" title="Sound on/off" aria-label="Toggle sound">🔊</button>
 
   <div class="pull-effect" id="pullEffect">
     <div class="effect-box" id="effectBox">
@@ -4177,6 +4221,168 @@ using (true);
   <div class="toast" id="toast"></div>
 
   <script>
+    const SOUND_STORAGE_KEY = "rwstcgSoundMuted";
+    let soundMuted = localStorage.getItem(SOUND_STORAGE_KEY) === "1";
+    let audioCtx = null;
+    let lastHoverSound = 0;
+
+    function ensureAudio(){
+      if(soundMuted) return null;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if(!AudioContextClass) return null;
+      if(!audioCtx) audioCtx = new AudioContextClass();
+      if(audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+      return audioCtx;
+    }
+
+    function tone(freq, start, duration, type = "sine", gain = 0.045, destination){
+      const ctx = audioCtx;
+      if(!ctx) return;
+      const osc = ctx.createOscillator();
+      const amp = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      amp.gain.setValueAtTime(0.0001, start);
+      amp.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), start + 0.012);
+      amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(amp);
+      amp.connect(destination || ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.025);
+    }
+
+    function sweep(from, to, start, duration, type = "sine", gain = 0.045, destination){
+      const ctx = audioCtx;
+      if(!ctx) return;
+      const osc = ctx.createOscillator();
+      const amp = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, start);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, to), start + duration);
+      amp.gain.setValueAtTime(0.0001, start);
+      amp.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), start + 0.015);
+      amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(amp);
+      amp.connect(destination || ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.035);
+    }
+
+    function noiseBurst(start, duration, gain = 0.025){
+      const ctx = audioCtx;
+      if(!ctx) return;
+      const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i = 0; i < length; i++){
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+      }
+      const src = ctx.createBufferSource();
+      const amp = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      filter.type = "highpass";
+      filter.frequency.value = 900;
+      amp.gain.setValueAtTime(gain, start);
+      amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      src.buffer = buffer;
+      src.connect(filter);
+      filter.connect(amp);
+      amp.connect(ctx.destination);
+      src.start(start);
+      src.stop(start + duration);
+    }
+
+    function playSound(name){
+      const ctx = ensureAudio();
+      if(!ctx) return;
+      const t = ctx.currentTime;
+
+      if(name === "click"){
+        tone(420, t, .045, "triangle", .018);
+        tone(760, t + .025, .045, "sine", .012);
+      } else if(name === "hover"){
+        const now = performance.now();
+        if(now - lastHoverSound < 95) return;
+        lastHoverSound = now;
+        tone(620, t, .035, "sine", .006);
+      } else if(name === "error"){
+        tone(190, t, .09, "sawtooth", .03);
+        tone(145, t + .07, .12, "sawtooth", .022);
+      } else if(name === "pack"){
+        // Soft, low-volume pack open: gentle digital whoosh + tiny pop.
+        // Avoids harsh sawtooth/noise frequencies so repeated openings stay pleasant.
+        sweep(420, 180, t, .18, "sine", .010);
+        sweep(190, 520, t + .035, .16, "triangle", .009);
+        tone(660, t + .145, .055, "sine", .010);
+      } else if(name === "flip"){
+        sweep(880, 360, t, .13, "triangle", .018);
+        tone(740, t + .09, .07, "sine", .012);
+      } else if(name === "coin"){
+        tone(940, t, .07, "triangle", .024);
+        tone(1320, t + .055, .09, "sine", .018);
+      } else if(name === "scrap"){
+        noiseBurst(t, .08, .02);
+        sweep(520, 210, t, .16, "square", .018);
+        tone(680, t + .14, .07, "triangle", .014);
+      } else if(name === "reward"){
+        tone(660, t, .09, "triangle", .028);
+        tone(880, t + .07, .10, "triangle", .026);
+        tone(1320, t + .15, .16, "sine", .024);
+      } else if(name === "fake"){
+        sweep(240, 720, t, .18, "triangle", .025);
+        tone(960, t + .14, .08, "sine", .018);
+      } else if(name === "boost"){
+        sweep(260, 1280, t, .34, "sawtooth", .035);
+        tone(880, t + .18, .12, "triangle", .022);
+        tone(1320, t + .28, .18, "sine", .025);
+      } else if(name === "rare"){
+        tone(620, t, .10, "triangle", .03);
+        tone(930, t + .08, .13, "triangle", .032);
+        tone(1240, t + .18, .16, "sine", .026);
+      } else if(name === "epic"){
+        sweep(380, 1180, t, .26, "sawtooth", .034);
+        tone(740, t + .11, .18, "triangle", .032);
+        tone(1480, t + .25, .22, "sine", .03);
+        noiseBurst(t + .10, .16, .014);
+      } else if(name === "legendary"){
+        noiseBurst(t, .22, .038);
+        sweep(120, 920, t, .42, "sawtooth", .042);
+        tone(523.25, t + .12, .20, "triangle", .035);
+        tone(783.99, t + .25, .22, "triangle", .038);
+        tone(1046.5, t + .42, .30, "sine", .043);
+        tone(1567.98, t + .56, .34, "sine", .035);
+      } else if(name === "complete"){
+        tone(523.25, t, .12, "triangle", .03);
+        tone(659.25, t + .10, .12, "triangle", .03);
+        tone(783.99, t + .20, .15, "triangle", .032);
+        tone(1046.5, t + .34, .26, "sine", .03);
+      }
+    }
+
+    function updateSoundToggle(){
+      const btn = document.getElementById("soundToggle");
+      if(!btn) return;
+      btn.textContent = soundMuted ? "🔇" : "🔊";
+      btn.classList.toggle("sound-muted", soundMuted);
+      btn.title = soundMuted ? "Sound off" : "Sound on";
+      btn.setAttribute("aria-label", soundMuted ? "Sound off" : "Sound on");
+    }
+
+    function toggleSound(){
+      soundMuted = !soundMuted;
+      localStorage.setItem(SOUND_STORAGE_KEY, soundMuted ? "1" : "0");
+      updateSoundToggle();
+      if(!soundMuted) playSound("reward");
+    }
+
+    function playRaritySound(robot){
+      if(!robot) return;
+      if(robot.rarity === "legendary") playSound("legendary");
+      else if(robot.rarity === "epic") playSound("epic");
+      else if(robot.rarity === "rare") playSound("rare");
+      else playSound("flip");
+    }
+
     let playerName = localStorage.getItem("playerName") || "";
     let coins = Number(localStorage.getItem("coins")) || 1500;
     let collection = JSON.parse(localStorage.getItem("collection") || "{}");
@@ -4318,6 +4524,7 @@ using (true);
     }
 
     function showPullEffect(robot){
+      playRaritySound(robot);
       if(!["epic", "legendary"].includes(robot.rarity)) return;
 
       const overlay = document.getElementById("pullEffect");
@@ -4690,6 +4897,7 @@ using (true);
 
     function openPack(type){
       if(pendingPull.length > 0) {
+        playSound("error");
         showToast("Move remote cards to collection first");
         return;
       }
@@ -4699,6 +4907,7 @@ using (true);
 
       const clickedPack = document.getElementById(`${selectedPack}PackVisual`);
       if(clickedPack && clickedPack.classList.contains("disabled")) {
+        playSound("error");
         showToast("Not enough coins");
         return;
       }
@@ -4706,11 +4915,13 @@ using (true);
       const pack = packTypes[selectedPack];
 
       if(coins < pack.price) {
+        playSound("error");
         showToast("Not enough coins");
         return;
       }
 
       coins -= pack.price;
+      playSound("pack");
 
       const packArea = document.getElementById("packArea");
       const packContent = document.getElementById("packContent");
@@ -4747,6 +4958,7 @@ using (true);
 
         pulled.forEach((robot,index)=>{
           packCards.appendChild(makePackRevealCard(robot, index * 260));
+          setTimeout(()=>playSound("flip"), index * 260 + 80);
         });
 
         document.getElementById("moveCardsBtn").classList.remove("hidden");
@@ -4762,7 +4974,7 @@ using (true);
     }
 
     function moveCardsToAlbum(){
-      if(pendingPull.length === 0) return;
+      if(pendingPull.length === 0){ playSound("error"); return; }
 
       pendingPull.forEach(robot=>{
         collection[robot.number] = (collection[robot.number] || 0) + 1;
@@ -4787,6 +4999,7 @@ using (true);
       checkCompletionTime();
       save();
       updateCoins();
+      playSound("reward");
       showToast("Remote cards moved to collection");
     }
 
@@ -4811,10 +5024,12 @@ using (true);
     function activateSpeedBoost(){
       if(hasActiveSpeedBoost()){
         updateSpeedBoostButton();
-        showToast("x3 SPEED läuft bereits");
+        playSound("error");
+        showToast("x3 SPEED already active");
         return;
       }
 
+      playSound("boost");
       window.open("https://www.effectivecpmnetwork.com/qs0kv921?key=e9d1e6b490c9aa5efdc07b1b1d94a17a", "_blank", "noopener,noreferrer");
 
       speedBoostUntil = Date.now() + SPEED_BOOST_DURATION_MS;
@@ -4823,7 +5038,7 @@ using (true);
       updateSpeedBoostButton();
       updateCooldownUI();
 
-      showToast("x3 Speed aktiviert · 10 Sekunden Cooldown für 10 Minuten");
+      showToast("x3 SPEED activated · 10s Fake Productivity cooldown for 10 minutes");
     }
 
     function updateSpeedBoostButton(){
@@ -4878,18 +5093,21 @@ using (true);
     function playMiniGame(){
       const remaining = currentCoinCooldown() - (Date.now() - lastCoinClaim);
       if(remaining > 0){
+        playSound("error");
         updateCooldownUI();
       updateSpeedBoostButton();
         return;
       }
 
       coins += 250;
+      playSound("fake");
       lastCoinClaim = Date.now();
       save();
       updateCoins();
       updateCooldownUI();
       updateSpeedBoostButton();
-      showToast("+250 Coins für Fake Productivity!");
+      showToast("+250 Coins from Fake Productivity!");
+      setTimeout(()=>playSound("coin"), 90);
     }
 
 
@@ -4957,6 +5175,64 @@ using (true);
         totalTime: Number(row.total_time) || 0,
         updatedAt: row.updated_at
       }));
+    }
+
+
+    async function fetchLeaderboardTotalPlayers(){
+      const url = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?select=username&limit=1`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: leaderboardHeaders({
+          "Prefer": "count=exact"
+        })
+      });
+
+      if(!response.ok) return null;
+
+      const contentRange = response.headers.get("content-range") || "";
+      const total = Number((contentRange.split("/")[1] || "").trim());
+      return Number.isFinite(total) ? total : null;
+    }
+
+    async function fetchMyLeaderboardEntry(){
+      const username = playerName || "Anonymous";
+      if(!username) return null;
+
+      const url = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?select=username,max_tier,total_time&username=eq.${encodeURIComponent(username)}&limit=1`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: leaderboardHeaders()
+      });
+
+      if(!response.ok) return null;
+      const rows = await response.json();
+      if(!rows.length) return null;
+
+      const row = rows[0];
+      return {
+        username: row.username || username,
+        maxTier: Number(row.max_tier),
+        totalTime: Number(row.total_time) || 0
+      };
+    }
+
+    async function fetchBetterLeaderboardCount(entry){
+      if(!entry) return null;
+      const query = `or=(max_tier.gt.${entry.maxTier},and(max_tier.eq.${entry.maxTier},total_time.lt.${entry.totalTime}))`;
+      const url = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?select=username&${query}&limit=1`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: leaderboardHeaders({
+          "Prefer": "count=exact"
+        })
+      });
+
+      if(!response.ok) return null;
+
+      const contentRange = response.headers.get("content-range") || "";
+      const total = Number((contentRange.split("/")[1] || "").trim());
+      return Number.isFinite(total) ? total : null;
     }
 
     async function submitLeaderboardScore(){
@@ -5033,7 +5309,11 @@ using (true);
       myRank.textContent = "Your Position: loading...";
 
       try{
-        const rows = await fetchLeaderboardRows();
+        const [rows, totalPlayers, myEntry] = await Promise.all([
+          fetchLeaderboardRows(),
+          fetchLeaderboardTotalPlayers(),
+          fetchMyLeaderboardEntry()
+        ]);
 
         const sorted = rows
           .sort((a,b)=>{
@@ -5042,16 +5322,31 @@ using (true);
           })
           .map((row,index)=>({...row, rank:index + 1, isMe: row.username === playerName}));
 
-        const me = sorted.find(row=>row.username === playerName);
+        let myExactRank = null;
+        if(myEntry){
+          const betterCount = await fetchBetterLeaderboardCount(myEntry);
+          if(Number.isFinite(betterCount)) myExactRank = betterCount + 1;
+        }
 
-        myRank.textContent = me
-          ? `Your Position: #${me.rank} · T${me.maxTier} · ${formatTime(me.totalTime)} total`
-          : "Your Position: not ranked yet";
+        if(myEntry && Number.isFinite(myExactRank) && Number.isFinite(totalPlayers)){
+          myRank.textContent = `You are on place ${myExactRank} out of ${totalPlayers} players · T${myEntry.maxTier} · ${formatTime(myEntry.totalTime)} total`;
+        } else if(myEntry && Number.isFinite(myExactRank)){
+          myRank.textContent = `You are on place ${myExactRank} · T${myEntry.maxTier} · ${formatTime(myEntry.totalTime)} total`;
+        } else if(myEntry){
+          const me = sorted.find(row=>row.username === playerName);
+          myRank.textContent = me
+            ? `You are on place ${me.rank}${Number.isFinite(totalPlayers) ? ` out of ${totalPlayers} players` : ""} · T${me.maxTier} · ${formatTime(me.totalTime)} total`
+            : "You are ranked, but your exact place is currently unavailable.";
+        } else {
+          myRank.textContent = Number.isFinite(totalPlayers)
+            ? `You are not ranked yet. ${totalPlayers} players are on the leaderboard.`
+            : "You are not ranked yet.";
+        }
 
         const top10 = sorted.slice(0,10);
 
         if(top10.length === 0){
-          list.innerHTML = `<div class="leaderboard-empty">Noch keine globalen Einträge vorhanden.</div>`;
+          list.innerHTML = `<div class="leaderboard-empty">No global entries yet.</div>`;
           return;
         }
 
@@ -5070,8 +5365,8 @@ using (true);
         myRank.textContent = "Your Position: unavailable";
         list.innerHTML = `
           <div class="leaderboard-empty">
-            Leaderboard konnte nicht geladen werden.<br>
-            Prüfe Supabase Tabelle + RLS Policies.
+            Leaderboard could not be loaded.<br>
+            Please check Supabase table + RLS policies.
           </div>
         `;
       }
@@ -5147,7 +5442,7 @@ using (true);
 
     function scrapDuplicate(number){
       const count = collection[number] || 0;
-      if(count <= 1) return alert("Du kannst nur doppelte Karten verschrotten.");
+      if(count <= 1){ playSound("error"); return alert("Only duplicate cards can be scrapped."); }
       const robot = robots[number - 1];
       const value = scrapValue(robot);
 
@@ -5156,7 +5451,8 @@ using (true);
       save();
       updateCoins();
       renderAlbum();
-      showToast(`${robot.name} verschrottet (+${value} Coins)`);
+      playSound("scrap");
+      showToast(`${robot.name} scrapped (+${value} Coins)`);
     }
 
 
@@ -5215,7 +5511,8 @@ using (true);
       });
 
       if(total <= 0){
-        showToast("Keine doppelten Karten vorhanden");
+        playSound("error");
+        showToast("No duplicate cards available");
         return;
       }
 
@@ -5229,7 +5526,9 @@ using (true);
         renderAlbum();
       }
 
-      showToast(`Alle Duplikate verschrottet (+${total} Coins)`);
+      playSound("scrap");
+      setTimeout(()=>playSound("coin"), 120);
+      showToast(`All duplicates scrapped (+${total} Coins)`);
     }
 
     function checkBonuses(){
@@ -5257,7 +5556,10 @@ using (true);
         save();
         updateSetBoxes();
         updateCollectedPanel();
-        showToast(`Achievement unlocked! ${earned.join(" · ")}`);
+        if(earned.length){
+          playSound("complete");
+          showToast(`Achievement unlocked! ${earned.join(" · ")}`);
+        }
       }
     }
 
@@ -5298,11 +5600,27 @@ using (true);
       });
     }
 
+
+    document.addEventListener("click", (event)=>{
+      if(event.target.closest("button,.booster-button")) playSound("click");
+    }, true);
+    document.addEventListener("mouseover", (event)=>{
+      if(event.target.closest("button,.booster-button")) playSound("hover");
+    }, true);
+    const soundToggleBtn = document.getElementById("soundToggle");
+    if(soundToggleBtn) soundToggleBtn.addEventListener("click", (event)=>{
+      event.preventDefault();
+      event.stopPropagation();
+      toggleSound();
+    });
+    updateSoundToggle();
+
     document.getElementById("startBtn").addEventListener("click", async () => {
       const input = document.getElementById("nameInput");
       const value = input.value.trim();
 
       if(!value){
+        playSound("error");
         showToast("Please enter a username");
         return;
       }
@@ -5313,6 +5631,7 @@ using (true);
         const exists = await usernameExistsGlobally(value);
 
         if(exists){
+          playSound("error");
           showToast("Username already taken globally");
           return;
         }
@@ -5320,6 +5639,7 @@ using (true);
 
       playerName = value;
       localStorage.setItem("playerName", playerName);
+      playSound("reward");
       showCorrectScreen();
     });
     document.getElementById("moveCardsBtn").addEventListener("click", moveCardsToAlbum);
