@@ -1,0 +1,4476 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Worker: Speed TCG</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #253454 0%, #090d18 55%, #02030a 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+    .app { width: 100%; max-width: 980px; min-height: 100vh; padding: 18px; }
+    .hidden { display:none !important; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; }
+    .logo-wrap {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .back-arrow {
+      width:38px;
+      height:38px;
+      border-radius:12px;
+      background:rgba(255,255,255,.09);
+      border:1px solid rgba(255,255,255,.14);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      font-size:24px;
+      font-weight:950;
+      cursor:pointer;
+      user-select:none;
+    }
+    .back-arrow:hover { background:rgba(255,255,255,.15); }
+    .title { font-size:26px; font-weight:950; letter-spacing:.5px; }
+    .profile { font-size:12px; color:#cbd5e1; text-align:right; }
+    .coins { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.16); padding:9px 12px; border-radius:999px; font-weight:900; color:#ffd76a; margin-top:4px; }
+    .panel { background:rgba(255,255,255,.075); border:1px solid rgba(255,255,255,.12); border-radius:24px; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.28); margin-bottom:14px; }
+    .login-card { margin-top:60px; text-align:center; }
+    input { width:100%; padding:15px; border-radius:16px; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.25); color:white; font-size:16px; outline:none; }
+    button { width:100%; border:none; border-radius:18px; padding:15px 18px; font-size:17px; font-weight:950; color:#06111f; background:linear-gradient(135deg,#facc15,#fb923c); box-shadow:0 10px 30px rgba(251,146,60,.28); cursor:pointer; margin-top:12px; }
+    .pull-btn {
+      margin-top:14px;
+      background:linear-gradient(135deg,#22d3ee,#6366f1,#a855f7);
+      color:white;
+      text-shadow:0 1px 8px rgba(0,0,0,.35);
+      box-shadow:0 0 28px rgba(99,102,241,.45), 0 10px 30px rgba(34,211,238,.22);
+      letter-spacing:.8px;
+      animation:pullGlow 1.7s infinite alternate;
+    }
+
+    .pull-btn:disabled {
+      opacity:.45;
+      animation:none;
+      filter:grayscale(1);
+      box-shadow:none;
+    }
+
+    .move-btn {
+      margin-top:12px;
+      background:linear-gradient(135deg,#22c55e,#14b8a6);
+      color:white;
+      box-shadow:0 0 32px rgba(34,197,94,.42), 0 10px 30px rgba(20,184,166,.24);
+      letter-spacing:.6px;
+      width:100%;
+      position:relative;
+      z-index:8;
+    }
+
+    .pack.revealed .move-btn {
+      display:block;
+    }
+
+    .choose-pack-label {
+      color:#e0f2fe;
+      font-weight:950;
+      text-align:center;
+      margin:14px 0 8px;
+      letter-spacing:.3px;
+      font-size:14px;
+    }
+
+    .locked-while-pending {
+      opacity:.45;
+      pointer-events:none;
+      filter:grayscale(.45);
+    }
+
+    @keyframes pullGlow {
+      from { transform:translateY(0); box-shadow:0 0 22px rgba(34,211,238,.35), 0 10px 30px rgba(99,102,241,.18); }
+      to { transform:translateY(-1px); box-shadow:0 0 42px rgba(168,85,247,.65), 0 12px 34px rgba(34,211,238,.32); }
+    }
+
+    .status-row {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .timer-panel,
+    .completed-panel {
+      background:rgba(255,255,255,.075);
+      border:1px solid rgba(255,255,255,.12);
+      color:#dbeafe;
+      font-weight:900;
+      padding:10px 10px;
+      border-radius:16px;
+      text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.18);
+      font-size:13px;
+    }
+
+    .completed-panel {
+      color:#bbf7d0;
+      border-color:rgba(34,197,94,.28);
+    }
+
+    .pack-selector {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin-top:14px;
+    }
+
+    .pack-choice {
+      margin-top:0;
+      padding:10px 6px;
+      border-radius:14px;
+      color:white;
+      font-size:12px;
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+      align-items:center;
+      justify-content:center;
+      border:2px solid rgba(255,255,255,.65);
+      background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));
+      box-shadow:0 0 12px rgba(255,255,255,.16);
+    }
+
+    #packAdvanced {
+      border-color:#facc15;
+      background:linear-gradient(135deg,rgba(250,204,21,.16),rgba(168,85,247,.22),rgba(255,255,255,.06));
+      box-shadow:0 0 18px rgba(250,204,21,.22), 0 0 20px rgba(168,85,247,.20);
+    }
+
+    #packElite {
+      border-color:#fb923c;
+      background:linear-gradient(135deg,rgba(251,146,60,.25),rgba(120,53,15,.22),rgba(2,6,23,.1));
+      box-shadow:0 0 28px rgba(251,146,60,.48), 0 0 16px rgba(250,204,21,.20);
+    }
+
+    .pack-choice b {
+      color:#facc15;
+      font-size:13px;
+    }
+
+    .pack-choice.active {
+      transform:translateY(-1px);
+      outline:2px solid rgba(34,211,238,.75);
+      outline-offset:2px;
+    }
+
+    .pack-basic {
+      background:linear-gradient(145deg,#111827,#243047 45%,#080b14);
+      border-color:#f8fafc;
+      box-shadow:0 0 20px rgba(255,255,255,.22), inset 0 0 28px rgba(255,255,255,.07);
+    }
+
+    .pack-advanced {
+      background:linear-gradient(145deg,#2e1065,#713f12 45%,#111827);
+      border-color:#facc15;
+      box-shadow:0 0 34px rgba(250,204,21,.38), 0 0 32px rgba(168,85,247,.32), inset 0 0 28px rgba(255,255,255,.09);
+    }
+
+    .pack-elite {
+      background:linear-gradient(145deg,#451a03,#7c2d12 34%,#111827 68%,#020617);
+      border-color:#fb923c;
+      box-shadow:0 0 62px rgba(251,146,60,.8), 0 0 44px rgba(250,204,21,.36), inset 0 0 28px rgba(255,255,255,.1);
+      animation:elitePulse 1.35s infinite alternate;
+    }
+
+    @keyframes elitePulse {
+      from { box-shadow:0 0 42px rgba(251,146,60,.55), 0 0 24px rgba(250,204,21,.22), inset 0 0 28px rgba(255,255,255,.1); }
+      to { box-shadow:0 0 76px rgba(251,146,60,.95), 0 0 50px rgba(250,204,21,.42), inset 0 0 28px rgba(255,255,255,.13); }
+    }
+
+    .pack-advanced .booster-top { color:#86efac; }
+    .pack-advanced .booster-price { background:#22c55e; color:#052e16; }
+    .pack-elite .booster-top { color:#fed7aa; }
+    .pack-elite .booster-price { background:#fb923c; color:#431407; }
+
+    .reset-corner {
+      position:fixed;
+      right:14px;
+      bottom:14px;
+      width:auto;
+      padding:8px 11px;
+      border-radius:12px;
+      font-size:11px;
+      opacity:.45;
+      background:rgba(255,255,255,.09);
+      color:white;
+      box-shadow:none;
+      border:1px solid rgba(255,255,255,.12);
+      z-index:50;
+    }
+
+    .reset-corner:hover {
+      opacity:.95;
+    }
+
+    button.secondary { background:rgba(255,255,255,.1); color:white; box-shadow:none; border:1px solid rgba(255,255,255,.12); }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    .pack { height:220px; border-radius:24px; background:linear-gradient(145deg,#263456,#101522); border:2px solid #6d7cff; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; position:relative; overflow:hidden; }
+    .pack:before { content:""; position:absolute; width:280px; height:280px; background:radial-gradient(circle,rgba(112,129,255,.35),transparent 65%); animation:pulse 2.3s infinite; }
+    .pack:after { content:""; position:absolute; inset:-40%; background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.12),transparent 60%); transform:rotate(18deg); animation:shine 3.8s infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(.85);opacity:.55} 50%{transform:scale(1.15);opacity:1} }
+    @keyframes shine { 0%{translate:-80% 0} 100%{translate:80% 0} }
+    .pack-content {
+      position:relative;
+      z-index:2;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+    }
+    .pack-icon { font-size:64px; margin-bottom:8px; }
+
+    .booster-button {
+      width:150px;
+      height:198px;
+      border-radius:20px;
+      background:linear-gradient(145deg,#111827,#26365f 45%,#080b14);
+      border:3px solid #7c83ff;
+      box-shadow:0 0 32px rgba(124,131,255,.55), inset 0 0 28px rgba(255,255,255,.08);
+      position:relative;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      transform:rotate(-4deg);
+      cursor:pointer;
+      transition:.18s ease;
+      user-select:none;
+    }
+
+    .pack-showcase {
+      width:100%;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      align-items:center;
+      justify-items:center;
+    }
+
+    .showcase-pack {
+      width:100%;
+      height:174px;
+      max-width:112px;
+      transform:none;
+      cursor:default;
+      pointer-events:none;
+    }
+
+    .showcase-pack .booster-top {
+      font-size:10px;
+      top:10px;
+    }
+
+    .showcase-pack .booster-title {
+      font-size:14px;
+      margin-top:14px;
+    }
+
+    .showcase-pack .booster-robot {
+      font-size:30px;
+      margin-top:10px;
+    }
+
+    .showcase-pack .booster-price {
+      font-size:10px;
+      padding:4px 8px;
+      bottom:10px;
+    }
+
+    .booster-button:hover {
+      transform:rotate(-2deg) scale(1.03);
+      box-shadow:0 0 44px rgba(250,204,21,.45), 0 0 34px rgba(124,131,255,.55);
+    }
+
+    .showcase-pack:hover {
+      transform:none;
+    }
+
+    .booster-button.disabled {
+      filter:grayscale(1);
+      opacity:.45;
+      cursor:not-allowed;
+      box-shadow:none;
+      border-color:#64748b;
+    }
+
+    .booster-button:before {
+      content:"";
+      position:absolute;
+      inset:9px;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;
+    }
+
+    .booster-shine {
+      position:absolute;
+      inset:-35%;
+      background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,.25), transparent 65%);
+      animation:packShine 2.8s infinite;
+      transform:rotate(14deg);
+    }
+
+    @keyframes packShine {
+      0% { translate:-80% 0; }
+      100% { translate:80% 0; }
+    }
+
+    .booster-top {
+      position:absolute;
+      top:13px;
+      font-size:13px;
+      font-weight:950;
+      color:#facc15;
+      letter-spacing:1.6px;
+    }
+
+    .booster-title {
+      font-size:20px;
+      line-height:.95;
+      font-weight:950;
+      letter-spacing:1px;
+      color:white;
+      text-align:center;
+      text-shadow:0 0 12px rgba(255,255,255,.35);
+      margin-top:18px;
+    }
+
+    .booster-robot {
+      font-size:40px;
+      margin-top:13px;
+      filter:drop-shadow(0 0 12px rgba(96,165,250,.55));
+    }
+
+    .booster-price {
+      position:absolute;
+      bottom:13px;
+      background:rgba(250,204,21,.92);
+      color:#111827;
+      border-radius:999px;
+      padding:5px 11px;
+      font-size:12px;
+      font-weight:950;
+      letter-spacing:.5px;
+    }
+
+    .booster-button.disabled .booster-price {
+      background:#94a3b8;
+      color:#0f172a;
+    }
+
+    .pack.opening .booster-button {
+      animation:tearPack .85s ease forwards;
+    }
+
+    @keyframes tearPack {
+      0% { transform:rotate(-4deg) scale(1); filter:brightness(1); }
+      25% { transform:rotate(5deg) scale(1.08); filter:brightness(1.35); }
+      50% { transform:rotate(-7deg) scale(1.11); filter:brightness(1.9); }
+      75% { transform:rotate(3deg) scale(.9); opacity:.85; }
+      100% { transform:rotate(0) scale(.15); opacity:0; }
+    }
+
+    .pack.opening:before {
+      background:radial-gradient(circle,rgba(250,204,21,.45),rgba(96,165,250,.25),transparent 67%);
+      animation:burstGlow .9s ease forwards;
+    }
+
+    @keyframes burstGlow {
+      0% { transform:scale(.3); opacity:.3; }
+      50% { transform:scale(1.4); opacity:1; }
+      100% { transform:scale(1.8); opacity:.15; }
+    }
+
+    .pack.revealed {
+      min-height:360px;
+      padding:14px;
+      justify-content:flex-start;
+    }
+
+    .pack-cards {
+      position:absolute;
+      inset:12px;
+      z-index:4;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      align-items:center;
+      justify-items:center;
+    }
+
+    .pack.revealed .pack-cards {
+      position:relative;
+      inset:auto;
+      width:100%;
+      min-height:238px;
+      margin-bottom:8px;
+    }
+
+    .pack-reveal-card {
+      width:100%;
+      max-width:112px;
+      height:178px;
+      border-radius:14px;
+      background:#050812;
+      border:3px solid white;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      padding:6px;
+      text-align:center;
+      overflow:hidden;
+      opacity:0;
+      transform:translateY(42px) scale(.65) rotate(-10deg);
+      animation:cardFlyOut .55s ease forwards;
+      box-shadow:0 12px 34px rgba(0,0,0,.35);
+    }
+
+    .pack-reveal-card.has-image {
+      padding:0;
+    }
+
+    .pack-reveal-card img {
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+      border-radius:11px;
+      background:#050812;
+    }
+
+    .pack-reveal-card .mini-card-art {
+      height:108px;
+      border-radius:10px;
+      background:radial-gradient(circle at center,#334155,#111827 70%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:36px;
+      margin-bottom:5px;
+    }
+
+    .pack-reveal-card .mini-card-name {
+      font-size:10px;
+      font-weight:950;
+      line-height:1.05;
+    }
+
+    .pack-reveal-card .mini-card-rarity {
+      font-size:9px;
+      font-weight:950;
+      text-transform:uppercase;
+    }
+
+    @keyframes cardFlyOut {
+      0% { opacity:0; transform:translateY(55px) scale(.55) rotate(-14deg); }
+      65% { opacity:1; transform:translateY(-8px) scale(1.08) rotate(2deg); }
+      100% { opacity:1; transform:translateY(0) scale(1) rotate(0); }
+    }
+    .small { color:#cbd5e1; font-size:14px; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
+    .card { min-height:230px; border-radius:18px; padding:8px; background:linear-gradient(180deg,#171e31,#070a12); display:flex; flex-direction:column; justify-content:space-between; text-align:center; border:3px solid white; transform:translateY(8px) rotateY(20deg); animation:reveal .35s ease forwards; position:relative; overflow:hidden; }
+    @keyframes reveal { to{transform:translateY(0) rotateY(0)} }
+    .art { height:150px; width:100%; border-radius:13px; display:flex; align-items:center; justify-content:center; margin:4px 0 8px; position:relative; background:radial-gradient(circle at center,#334155,#111827 70%); overflow:hidden !important; z-index:2; }
+    .art img { max-width:100% !important; max-height:100% !important; width:auto !important; height:auto !important; object-fit:contain !important; display:block !important; padding:4px !important; }
+    .fallback-icon { font-size:50px; filter: drop-shadow(0 0 10px rgba(255,255,255,.25)); }
+    .card-name { font-size:11px; font-weight:900; line-height:1.15; position:relative; z-index:2; }
+    .card-num { font-size:13px; color:#cbd5e1; position:relative; z-index:2; }
+    .rarity { font-size:10px; font-weight:950; text-transform:uppercase; position:relative; z-index:2; }
+    .common { border-color:#e5e7eb; }
+    .uncommon { border-color:#22c55e; box-shadow:0 0 18px rgba(34,197,94,.22); }
+    .rare { border-color:#facc15; box-shadow:0 0 22px rgba(250,204,21,.32); }
+    .epic { border-color:#a855f7; box-shadow:0 0 28px rgba(168,85,247,.45); }
+    .legendary { border-color:#fb923c; box-shadow:0 0 48px rgba(251,146,60,.85); animation:legendary .55s ease infinite alternate; }
+    .legendary:after { content:""; position:absolute; inset:-30%; background:conic-gradient(from 0deg,transparent,rgba(251,146,60,.35),transparent,rgba(250,204,21,.35),transparent); animation:spin 2.4s linear infinite; opacity:.75; pointer-events:none; }
+    @keyframes legendary { from{transform:scale(1)} to{transform:scale(1.035)} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .card.has-image {
+      padding:0;
+      min-height:245px;
+      background:#050812;
+      overflow:hidden;
+    }
+    .card.has-image .full-card-img {
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+      border-radius:14px;
+      background:#050812;
+    }
+
+    .pull-effect {
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:9998;
+      pointer-events:none;
+      opacity:0;
+      transition:opacity .2s ease;
+    }
+    .pull-effect.show {
+      opacity:1;
+    }
+    .effect-box {
+      padding:26px 34px;
+      border-radius:26px;
+      font-size:30px;
+      font-weight:950;
+      letter-spacing:1px;
+      text-align:center;
+      background:rgba(2,6,23,.78);
+      border:3px solid white;
+      box-shadow:0 0 50px rgba(255,255,255,.35);
+      transform:scale(.85);
+      animation:effectPop .9s ease forwards;
+    }
+    .effect-small {
+      margin-top:8px;
+      font-size:13px;
+      color:#e2e8f0;
+      letter-spacing:0;
+    }
+    @keyframes effectPop {
+      0% { transform:scale(.65) rotate(-2deg); }
+      45% { transform:scale(1.08) rotate(1deg); }
+      100% { transform:scale(1) rotate(0); }
+    }
+    .effect-rare .effect-box {
+      border-color:#facc15;
+      color:#facc15;
+      box-shadow:0 0 70px rgba(250,204,21,.65);
+    }
+    .effect-epic .effect-box {
+      border-color:#a855f7;
+      color:#e9d5ff;
+      box-shadow:0 0 90px rgba(168,85,247,.85);
+    }
+    .effect-legendary {
+      background:radial-gradient(circle, rgba(251,146,60,.32), rgba(2,6,23,.15), transparent);
+      animation:screenShake .55s ease;
+    }
+    .effect-legendary .effect-box {
+      border-color:#fb923c;
+      color:#fed7aa;
+      font-size:34px;
+      box-shadow:0 0 120px rgba(251,146,60,1), 0 0 180px rgba(250,204,21,.55);
+      background:linear-gradient(135deg,rgba(120,53,15,.92),rgba(2,6,23,.88));
+    }
+    @keyframes screenShake {
+      0%,100% { transform:translate(0,0); }
+      20% { transform:translate(7px,-5px); }
+      40% { transform:translate(-6px,4px); }
+      60% { transform:translate(4px,6px); }
+      80% { transform:translate(-3px,-4px); }
+    }
+
+    .album-grid {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+    }
+    .slot {
+      min-height:225px;
+      border-radius:16px;
+      background:linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.055));
+      border:2px solid rgba(255,255,255,.16);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      color:white;
+      position:relative;
+      text-align:center;
+      padding:7px;
+      overflow:hidden;
+      box-shadow:0 12px 30px rgba(0,0,0,.18);
+    }
+    .slot.owned { background:linear-gradient(180deg, rgba(255,255,255,.17), rgba(255,255,255,.07)); }
+    .slot.common { border-color:#e5e7eb; }
+    .slot.uncommon { border-color:#22c55e; box-shadow:0 0 18px rgba(34,197,94,.20); }
+    .slot.rare { border-color:#facc15; box-shadow:0 0 22px rgba(250,204,21,.25); }
+    .slot.epic { border-color:#a855f7; box-shadow:0 0 24px rgba(168,85,247,.35); }
+    .slot.legendary { border-color:#fb923c; box-shadow:0 0 30px rgba(251,146,60,.55); }
+
+    .slot .miniart {
+      width:100%;
+      height:162px;
+      border-radius:12px;
+      overflow:hidden !important;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:6px;
+      background:#080d18;
+    }
+    .slot .miniart img {
+      width:100% !important;
+      height:100% !important;
+      object-fit:contain !important;
+      display:block !important;
+      padding:0 !important;
+    }
+    .slot .miniart .fallback-icon { font-size:42px; opacity:.95; }
+
+    .slot-title {
+      font-weight:950;
+      font-size:11px;
+      line-height:1.08;
+      margin-top:1px;
+    }
+    .slot-number {
+      color:#cbd5e1;
+      font-weight:900;
+      font-size:11px;
+      margin-bottom:2px;
+    }
+    .owned-check {
+      position:absolute;
+      left:6px;
+      top:6px;
+      width:24px;
+      height:24px;
+      border-radius:999px;
+      background:#22c55e;
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:14px;
+      font-weight:950;
+      z-index:6;
+      border:2px solid rgba(255,255,255,.75);
+      box-shadow:0 0 14px rgba(34,197,94,.55);
+    }
+    .dup {
+      position:absolute;
+      right:6px;
+      top:6px;
+      background:#facc15;
+      color:#111827;
+      border-radius:999px;
+      padding:2px 7px;
+      font-size:11px;
+      font-weight:950;
+      z-index:5;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+    }
+
+    .scrap-btn {
+      margin-top:6px;
+      padding:7px 8px;
+      border-radius:10px;
+      font-size:10px;
+      font-weight:950;
+      background:linear-gradient(135deg,#94a3b8,#475569);
+      color:white;
+      box-shadow:none;
+    }
+    .cooldown {
+      text-align:center;
+      color:#cbd5e1;
+      font-size:12px;
+      margin-top:8px;
+      min-height:16px;
+    }
+
+    .bulk-scrap-btn {
+      margin-top:14px;
+      background:linear-gradient(135deg,#ef4444,#f97316);
+      color:white;
+      font-weight:950;
+      border-radius:14px;
+      padding:14px;
+      box-shadow:0 10px 24px rgba(239,68,68,.25);
+    }
+
+    .toast {
+      position:fixed;
+      left:50%;
+      bottom:28px;
+      transform:translateX(-50%);
+      background:rgba(15,23,42,.95);
+      border:1px solid rgba(255,255,255,.15);
+      color:white;
+      padding:14px 18px;
+      border-radius:14px;
+      font-weight:800;
+      z-index:9999;
+      opacity:0;
+      transition:all .25s ease;
+      pointer-events:none;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .toast.show {
+      opacity:1;
+      bottom:40px;
+    }
+
+    .setbar { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+    .setbox { background:rgba(0,0,0,.22); border-radius:14px; padding:9px; font-size:11px; text-align:center; border:1px solid rgba(255,255,255,.12); }
+  
+    /* v24 polished pack-opening stage */
+    .pack {
+      min-height: 400px;
+      padding: 18px;
+      border-color: rgba(124,131,255,.85);
+      box-shadow: 0 0 42px rgba(99,102,241,.25), inset 0 0 48px rgba(30,64,175,.18);
+    }
+
+    .stage-title {
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:14px;
+      font-size:18px;
+      font-weight:950;
+      letter-spacing:1.1px;
+      color:white;
+      text-shadow:0 0 14px rgba(147,197,253,.55);
+      margin-bottom:14px;
+    }
+
+    .stage-title span {
+      flex:1;
+      max-width:92px;
+      height:2px;
+      background:linear-gradient(90deg, transparent, #38bdf8, transparent);
+      opacity:.75;
+    }
+
+    .pack-showcase {
+      width:100%;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:14px;
+      align-items:start;
+      justify-items:center;
+    }
+
+    .showcase-pack {
+      width:100%;
+      height:250px;
+      max-width:128px;
+      transform:none;
+      cursor:pointer;
+      pointer-events:auto;
+      border-radius:20px;
+      transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+    }
+
+    .showcase-pack:hover {
+      transform: translateY(-4px) scale(1.035);
+      filter: brightness(1.15);
+    }
+
+    .showcase-pack.disabled {
+      filter: grayscale(1);
+      opacity:.38;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .showcase-pack .booster-top {
+      font-size:11px;
+      top:13px;
+      letter-spacing:1.8px;
+    }
+
+    .showcase-pack .booster-title {
+      font-size:18px;
+      line-height:1;
+      margin-top:18px;
+    }
+
+    .showcase-pack .booster-robot {
+      font-size:42px;
+      margin-top:18px;
+    }
+
+    .showcase-pack .booster-price {
+      bottom:38px;
+      font-size:11px;
+      padding:5px 9px;
+      white-space:nowrap;
+    }
+
+    .pack-chance {
+      position:absolute;
+      bottom:12px;
+      left:8px;
+      right:8px;
+      font-size:8.5px;
+      line-height:1.1;
+      font-weight:950;
+      color:#dbeafe;
+      text-align:center;
+      text-shadow:0 1px 5px rgba(0,0,0,.55);
+    }
+
+    .pack-basic {
+      border-color:#f8fafc !important;
+      box-shadow:0 0 26px rgba(255,255,255,.36), inset 0 0 30px rgba(255,255,255,.08) !important;
+    }
+
+    .pack-advanced {
+      border-color:#facc15 !important;
+      box-shadow:0 0 30px rgba(250,204,21,.34), 0 0 34px rgba(168,85,247,.34), inset 0 0 30px rgba(255,255,255,.10) !important;
+    }
+
+    .pack-elite {
+      border-color:#fb923c !important;
+      box-shadow:0 0 58px rgba(251,146,60,.82), 0 0 42px rgba(250,204,21,.34), inset 0 0 30px rgba(255,255,255,.10) !important;
+    }
+
+    .pack.revealed {
+      min-height: 455px;
+      padding:18px;
+      justify-content:flex-start;
+    }
+
+    .pack.revealed .pack-cards {
+      position:relative;
+      inset:auto;
+      width:100%;
+      min-height:285px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:14px;
+      align-items:center;
+      justify-items:center;
+      margin-top:8px;
+      margin-bottom:12px;
+    }
+
+    .pack-reveal-card {
+      max-width:128px;
+      height:220px;
+      border-radius:18px;
+      box-shadow:0 0 24px rgba(255,255,255,.15), 0 14px 38px rgba(0,0,0,.42);
+    }
+
+    .pack-reveal-card .mini-card-art {
+      height:138px;
+      font-size:48px;
+    }
+
+    .pack-reveal-card .mini-card-name {
+      font-size:12px;
+    }
+
+    .pack-reveal-card .mini-card-rarity {
+      font-size:10px;
+    }
+
+    .pack.revealed .move-btn {
+      margin-top:0;
+      max-width: 360px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+
+    @media (max-width: 390px) {
+      .showcase-pack { height:230px; max-width:116px; }
+      .showcase-pack .booster-title { font-size:16px; }
+      .showcase-pack .booster-robot { font-size:36px; }
+      .pack-reveal-card { max-width:116px; height:205px; }
+      .stage-title { font-size:15px; gap:8px; }
+    }
+
+  
+    #bulkScrapMain {
+      margin-top: 12px;
+    }
+
+    #bulkScrapMain button {
+      width: 100%;
+    }
+
+
+    /* Real pack artwork images */
+    #basicPackVisual,
+    #advancedPackVisual,
+    #elitePackVisual {
+      overflow: hidden;
+      position: relative;
+    }
+
+    #basicPackVisual::before,
+    #advancedPackVisual::before,
+    #elitePackVisual::before {
+      content:"";
+      position:absolute;
+      inset:0;
+      background-size: cover;
+      background-position: center;
+      opacity:.92;
+      z-index:0;
+      border-radius:18px;
+    }
+
+    #basicPackVisual::before {
+      background-image:url("images/basic pack.png");
+    }
+
+    #advancedPackVisual::before {
+      background-image:url("images/advanced pack.png");
+    }
+
+    #elitePackVisual::before {
+      background-image:url("images/elite pack.png");
+    }
+
+    #basicPackVisual > *,
+    #advancedPackVisual > *,
+    #elitePackVisual > * {
+      position:relative;
+      z-index:2;
+    }
+
+    #basicPackVisual::after,
+    #advancedPackVisual::after,
+    #elitePackVisual::after {
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:18px;
+      background:linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,.15));
+      z-index:1;
+    }
+
+
+    /* Cleaner artwork-only pack visuals */
+    .showcase-pack {
+      background: transparent !important;
+      overflow: visible;
+      border-radius: 22px;
+      padding: 0;
+      height: 290px;
+      max-width: 145px;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    .showcase-pack::after {
+      display: none !important;
+    }
+
+    .showcase-pack .booster-top,
+    .showcase-pack .booster-title,
+    .showcase-pack .booster-robot,
+    .showcase-pack .pack-chance {
+      display: none !important;
+    }
+
+    #basicPackVisual::before,
+    #advancedPackVisual::before,
+    #elitePackVisual::before {
+      inset: 0 0 52px 0 !important;
+      border-radius: 22px;
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      background-position: center top !important;
+      opacity: 1 !important;
+      box-shadow: none !important;
+    }
+
+    .showcase-pack .booster-price {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
+      min-width: 110px;
+      text-align: center;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 900;
+      padding: 10px 14px;
+      letter-spacing: .5px;
+      backdrop-filter: blur(8px);
+    }
+
+    #basicPackVisual .booster-price {
+      background: linear-gradient(135deg,#f8fafc,#cbd5e1);
+      color: #111827;
+      box-shadow: 0 0 18px rgba(255,255,255,.45);
+    }
+
+    #advancedPackVisual .booster-price {
+      background: linear-gradient(135deg,#a855f7,#facc15);
+      color: white;
+      box-shadow: 0 0 24px rgba(168,85,247,.5),0 0 18px rgba(250,204,21,.35);
+    }
+
+    #elitePackVisual .booster-price {
+      background: linear-gradient(135deg,#fb923c,#facc15);
+      color: #111827;
+      box-shadow: 0 0 34px rgba(251,146,60,.7);
+    }
+
+    #basicPackVisual {
+      filter: drop-shadow(0 0 18px rgba(255,255,255,.35));
+    }
+
+    #advancedPackVisual {
+      filter: drop-shadow(0 0 24px rgba(168,85,247,.55))
+              drop-shadow(0 0 16px rgba(250,204,21,.35));
+    }
+
+    #elitePackVisual {
+      filter: drop-shadow(0 0 40px rgba(251,146,60,.9));
+    }
+
+    .pack-showcase {
+      align-items: end !important;
+      gap: 18px;
+      margin-top: 10px;
+    }
+
+    .pack.revealed .pack-cards {
+      margin-top: 24px;
+    }
+
+
+    /* v28 pack artwork polish */
+    .pack {
+      min-height: 470px !important;
+    }
+
+    .pack-showcase {
+      gap: 8px !important;
+      align-items: start !important;
+    }
+
+    .showcase-pack {
+      height: 230px !important;
+      max-width: 105px !important;
+      opacity: 1 !important;
+    }
+
+    #basicPackVisual::before,
+    #advancedPackVisual::before,
+    #elitePackVisual::before {
+      inset: 0 0 62px 0 !important;
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      background-position: center top !important;
+      opacity: 1 !important;
+      filter: none !important;
+    }
+
+    #basicPackVisual::after,
+    #advancedPackVisual::after,
+    #elitePackVisual::after {
+      display: none !important;
+      background: none !important;
+    }
+
+    .showcase-pack.disabled::before {
+      filter: grayscale(1) brightness(.45) !important;
+      opacity: .45 !important;
+    }
+
+    .showcase-pack.disabled .booster-price {
+      opacity: .55;
+      filter: grayscale(1);
+    }
+
+    .showcase-pack .booster-price {
+      bottom: 14px !important;
+      min-width: 122px !important;
+      font-size: 13px !important;
+      padding: 9px 12px !important;
+      z-index: 5 !important;
+    }
+
+    #bulkScrapMain {
+      margin-top: 12px;
+    }
+
+    #bulkScrapMain button {
+      width: 100%;
+      margin-top: 0;
+      background: linear-gradient(135deg,#64748b,#334155);
+      color: white;
+      box-shadow: none;
+    }
+
+    @media (max-width: 390px) {
+      .showcase-pack {
+        height: 300px !important;
+        max-width: 132px !important;
+      }
+
+      .pack {
+        min-height: 510px !important;
+      }
+
+      .showcase-pack .booster-price {
+        min-width: 108px !important;
+        font-size: 12px !important;
+      }
+    }
+
+
+    /* Final main-menu fixes: larger pack artworks + main duplicate scrap button */
+    #mainScreen .pack {
+      min-height: 610px !important;
+      padding: 16px 10px 18px !important;
+    }
+
+    #mainScreen .pack-showcase {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+      margin-top: 4px !important;
+    }
+
+    #mainScreen .showcase-pack {
+      width: 100% !important;
+      height: 410px !important;
+      max-width: none !important;
+      overflow: visible !important;
+    }
+
+    #mainScreen #basicPackVisual::before,
+    #mainScreen #advancedPackVisual::before,
+    #mainScreen #elitePackVisual::before {
+      left: -20% !important;
+      right: -20% !important;
+      top: -8px !important;
+      bottom: 56px !important;
+      width: auto !important;
+      background-size: contain !important;
+      background-position: center top !important;
+    }
+
+    #mainScreen .showcase-pack .booster-price {
+      bottom: 6px !important;
+      min-width: 104px !important;
+      font-size: 12px !important;
+      padding: 8px 8px !important;
+    }
+
+    #bulkScrapMainBtn {
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    #bulkScrapMainBtn:not(:disabled) {
+      background: linear-gradient(135deg,#ef4444,#f97316) !important;
+      box-shadow: 0 10px 24px rgba(239,68,68,.25) !important;
+    }
+
+    @media (max-width: 390px) {
+      #mainScreen .pack {
+        min-height: 575px !important;
+      }
+
+      #mainScreen .showcase-pack {
+        height: 375px !important;
+      }
+
+      #mainScreen #basicPackVisual::before,
+      #mainScreen #advancedPackVisual::before,
+      #mainScreen #elitePackVisual::before {
+        left: -17% !important;
+        right: -17% !important;
+      }
+
+      #mainScreen .showcase-pack .booster-price {
+        min-width: 96px !important;
+        font-size: 11px !important;
+      }
+    }
+
+
+
+    /* v30: smaller main-menu pack artworks, remove leftover old frames/shine, 5-column album */
+    .pack {
+      min-height: 500px !important;
+    }
+
+    .pack-showcase {
+      gap: 12px !important;
+      margin-top: 8px !important;
+      align-items: start !important;
+    }
+
+    .showcase-pack {
+      height: 285px !important;
+      max-width: 126px !important;
+      overflow: visible !important;
+    }
+
+    .showcase-pack .booster-shine {
+      display: none !important;
+    }
+
+    #basicPackVisual::before,
+    #advancedPackVisual::before,
+    #elitePackVisual::before {
+      inset: 0 0 52px 0 !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      background-position: center top !important;
+    }
+
+    #basicPackVisual::after,
+    #advancedPackVisual::after,
+    #elitePackVisual::after,
+    .showcase-pack::after {
+      display: none !important;
+      content: none !important;
+      border: none !important;
+      outline: none !important;
+      background: none !important;
+      box-shadow: none !important;
+    }
+
+    .showcase-pack .booster-price {
+      bottom: 8px !important;
+      min-width: 104px !important;
+      font-size: 12px !important;
+      padding: 8px 10px !important;
+      white-space: nowrap !important;
+    }
+
+    .album-grid {
+      grid-template-columns: repeat(5, 1fr) !important;
+      gap: 6px !important;
+    }
+
+    .slot {
+      min-height: 142px !important;
+      border-radius: 12px !important;
+      padding: 4px !important;
+      border-width: 2px !important;
+    }
+
+    .slot .miniart {
+      height: 90px !important;
+      border-radius: 9px !important;
+      margin-bottom: 4px !important;
+    }
+
+    .slot-title {
+      font-size: 8px !important;
+      line-height: 1.05 !important;
+    }
+
+    .slot-number {
+      font-size: 8px !important;
+      margin-bottom: 1px !important;
+    }
+
+    .owned-check {
+      left: 3px !important;
+      top: 3px !important;
+      width: 18px !important;
+      height: 18px !important;
+      font-size: 11px !important;
+      border-width: 1px !important;
+    }
+
+    .dup {
+      right: 3px !important;
+      top: 3px !important;
+      padding: 1px 5px !important;
+      font-size: 8px !important;
+    }
+
+    @media (max-width: 390px) {
+      .pack {
+        min-height: 480px !important;
+      }
+
+      .pack-showcase {
+        gap: 8px !important;
+      }
+
+      .showcase-pack {
+        height: 260px !important;
+        max-width: 112px !important;
+      }
+
+      #basicPackVisual::before,
+      #advancedPackVisual::before,
+      #elitePackVisual::before {
+        inset: 0 0 46px 0 !important;
+      }
+
+      .showcase-pack .booster-price {
+        min-width: 92px !important;
+        font-size: 11px !important;
+        padding: 7px 8px !important;
+      }
+
+      .album-grid {
+        gap: 5px !important;
+      }
+
+      .slot {
+        min-height: 128px !important;
+        padding: 3px !important;
+      }
+
+      .slot .miniart {
+        height: 78px !important;
+      }
+
+      .slot-title,
+      .slot-number {
+        font-size: 7.5px !important;
+      }
+    }
+
+
+    .pack-showcase::before,
+    .pack-showcase::after,
+    .showcase-pack::before,
+    .showcase-pack::after {
+      box-shadow: none !important;
+    }
+
+    #basicPackVisual::before,
+    #advancedPackVisual::before,
+    #elitePackVisual::before {
+      inset: 0 0 46px 0 !important;
+    }
+
+    .pack-content {
+      justify-content:flex-start !important;
+    }
+
+
+/* v32 reference-style desktop main menu */
+.app {
+  max-width: 980px !important;
+  padding: 28px 36px !important;
+}
+
+.topbar {
+  margin-bottom: 22px !important;
+}
+
+.title {
+  font-size: 40px !important;
+  line-height: 1 !important;
+}
+
+.profile {
+  font-size: 18px !important;
+}
+
+.coins {
+  font-size: 20px !important;
+  padding: 14px 22px !important;
+}
+
+.status-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1.1fr !important;
+  gap: 20px !important;
+  margin-bottom: 22px !important;
+}
+
+.timer-panel,
+.completed-panel {
+  min-height: 112px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 18px !important;
+  font-size: 21px !important;
+}
+
+.timer-panel {
+  flex-direction: column !important;
+}
+
+.completed-panel {
+  font-size: 24px !important;
+  color: #4ade80 !important;
+}
+
+.panel {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#packArea {
+  min-height: 470px !important;
+  height: 470px !important;
+  border-radius: 20px !important;
+  padding: 26px 54px 34px !important;
+  background: radial-gradient(circle at top, rgba(37,52,84,.92), rgba(8,13,24,.95) 70%) !important;
+  border: 1px solid rgba(148,163,184,.26) !important;
+  box-shadow: inset 0 0 46px rgba(56,189,248,.06), 0 18px 52px rgba(0,0,0,.22) !important;
+  overflow: hidden !important;
+}
+
+#packArea::before,
+#packArea::after {
+  display: none !important;
+}
+
+.pack-content {
+  height: 100% !important;
+  justify-content: flex-start !important;
+  gap: 22px !important;
+}
+
+.stage-title {
+  font-size: 30px !important;
+  margin: 4px 0 10px !important;
+  gap: 26px !important;
+  text-shadow: 0 3px 10px rgba(0,0,0,.6) !important;
+  white-space: nowrap !important;
+}
+
+.stage-title span {
+  max-width: 86px !important;
+  height: 5px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, transparent, #38bdf8, transparent) !important;
+  box-shadow: 0 0 18px rgba(56,189,248,.85) !important;
+}
+
+.pack-showcase {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 48px !important;
+  justify-items: center !important;
+  align-items: start !important;
+  margin-top: 8px !important;
+}
+
+.showcase-pack {
+  width: 220px !important;
+  max-width: 220px !important;
+  height: 350px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  filter: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 !important;
+  border-radius: 0 !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+.showcase-pack::after,
+#basicPackVisual::after,
+#advancedPackVisual::after,
+#elitePackVisual::after,
+.booster-shine,
+.booster-top,
+.booster-title,
+.booster-robot,
+.pack-chance {
+  display: none !important;
+}
+
+.showcase-pack .booster-price {
+  bottom: 18px !important;
+  min-width: 152px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  padding: 12px 18px !important;
+  border-radius: 999px !important;
+  color: white !important;
+  background: rgba(15,23,42,.72) !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,.38), inset 0 0 14px rgba(255,255,255,.12) !important;
+}
+
+#mainScreen > .panel > .row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 28px !important;
+  margin-top: 26px !important;
+}
+
+#mainScreen > .panel > .row button,
+#bulkScrapMain button {
+  min-height: 96px !important;
+  border-radius: 18px !important;
+  font-size: 24px !important;
+  letter-spacing: .2px !important;
+  margin-top: 0 !important;
+}
+
+#bulkScrapMain {
+  margin-top: 0 !important;
+  order: -1;
+}
+
+#bulkScrapMain button,
+#bulkScrapMainBtn {
+  background: linear-gradient(135deg, rgba(34,197,94,.25), rgba(20,83,45,.55)) !important;
+  border: 2px solid #22c55e !important;
+  color: white !important;
+  box-shadow: 0 0 24px rgba(34,197,94,.18) !important;
+}
+
+#albumBtn {
+  background: linear-gradient(135deg, rgba(14,165,233,.22), rgba(30,64,175,.55)) !important;
+  border: 2px solid #0ea5e9 !important;
+  color: white !important;
+}
+
+#playMiniBtn {
+  display: none !important;
+}
+
+#mainScreen > .panel {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#mainScreen > .panel > .row {
+  order: 2;
+}
+
+#bulkScrapMain {
+  order: 2;
+}
+
+/* Put scrap + album buttons side by side */
+#mainScreen > .panel > .row {
+  grid-template-columns: 1fr 1fr !important;
+}
+#mainScreen > .panel > .row #albumBtn {
+  grid-column: 2;
+}
+#bulkScrapMain {
+  width: calc(50% - 14px) !important;
+  margin-top: 26px !important;
+}
+
+/* 5-column album */
+.album-grid {
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 16px !important;
+}
+
+.slot {
+  min-height: 190px !important;
+}
+
+.slot .miniart {
+  height: 126px !important;
+}
+
+@media (max-width: 700px) {
+  .app {
+    max-width: 430px !important;
+    padding: 18px !important;
+  }
+
+  .title { font-size: 26px !important; }
+  .profile { font-size: 12px !important; }
+  .coins { font-size: 12px !important; padding: 9px 12px !important; }
+
+  .status-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .timer-panel,
+  .completed-panel {
+    min-height: auto !important;
+    font-size: 13px !important;
+    padding: 10px !important;
+  }
+
+  #packArea {
+    height: 470px !important;
+    min-height: 470px !important;
+    padding: 22px 18px !important;
+  }
+
+  .stage-title {
+    font-size: 17px !important;
+    gap: 12px !important;
+  }
+
+  .pack-showcase {
+    gap: 6px !important;
+  }
+
+  .showcase-pack {
+    width: 108px !important;
+    max-width: 108px !important;
+    height: 220px !important;
+  }
+
+  .showcase-pack .booster-price {
+    bottom: 12px !important;
+    min-width: 90px !important;
+    font-size: 11px !important;
+    padding: 8px 9px !important;
+  }
+
+  #mainScreen > .panel > .row {
+    gap: 10px !important;
+    margin-top: 12px !important;
+  }
+
+  #mainScreen > .panel > .row button,
+  #bulkScrapMain button {
+    min-height: 72px !important;
+    font-size: 17px !important;
+  }
+
+  #bulkScrapMain {
+    width: 100% !important;
+    margin-top: 12px !important;
+  }
+
+  .album-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .slot {
+    min-height: 128px !important;
+    padding: 4px !important;
+    border-radius: 10px !important;
+  }
+
+  .slot .miniart {
+    height: 78px !important;
+    border-radius: 8px !important;
+  }
+
+  .slot-title,
+  .slot-number {
+    font-size: 8px !important;
+  }
+}
+
+
+/* v33 fixes: +50 coins button back, pack prices below pack artwork */
+#playMiniBtn {
+  display: block !important;
+  grid-column: 1 / -1 !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(71,85,105,.7)) !important;
+  border: 1px solid rgba(255,255,255,.18) !important;
+  color: white !important;
+}
+
+#mainScreen > .panel > .row {
+  grid-template-columns: 1fr 1fr !important;
+  align-items: stretch !important;
+}
+
+#bulkScrapMain {
+  width: 100% !important;
+  margin-top: 0 !important;
+  grid-column: 1 !important;
+}
+
+#albumBtn {
+  grid-column: 2 !important;
+}
+
+.showcase-pack {
+  height: 390px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 62px 0 !important;
+  background-position: center top !important;
+}
+
+.showcase-pack .booster-price {
+  bottom: -36px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  min-width: 170px !important;
+  font-size: 18px !important;
+  padding: 13px 18px !important;
+  background: rgba(15,23,42,.86) !important;
+  border: 1px solid rgba(255,255,255,.20) !important;
+  color: white !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 700px) {
+  .showcase-pack {
+    height: 258px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    inset: 0 0 42px 0 !important;
+  }
+
+  .showcase-pack .booster-price {
+    bottom: 0 !important;
+    min-width: 96px !important;
+    font-size: 11px !important;
+    padding: 8px 8px !important;
+  }
+
+  #mainScreen > .panel > .row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  #bulkScrapMain {
+    grid-column: 1 !important;
+  }
+
+  #albumBtn {
+    grid-column: 2 !important;
+  }
+
+  #playMiniBtn {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+
+/* v34 layout refinements */
+.showcase-pack {
+  height: 430px !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 95px 0 !important;
+}
+
+.showcase-pack .booster-price {
+  bottom: -8px !important;
+  min-width: 190px !important;
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  padding: 16px 24px !important;
+  border-radius: 999px !important;
+  background: rgba(15,23,42,.92) !important;
+  border: 2px solid rgba(255,255,255,.22) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45) !important;
+}
+
+#mainScreen > .panel > .row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 24px !important;
+  margin-top: 34px !important;
+}
+
+#playMiniBtn {
+  order: -1 !important;
+  grid-column: 1 / -1 !important;
+  min-height: 92px !important;
+  font-size: 28px !important;
+  margin-bottom: 6px !important;
+  background: linear-gradient(135deg,#38bdf8,#2563eb) !important;
+  border: 2px solid rgba(255,255,255,.16) !important;
+  box-shadow: 0 10px 32px rgba(37,99,235,.35) !important;
+}
+
+#bulkScrapMain {
+  grid-column: 1 !important;
+}
+
+#albumBtn {
+  grid-column: 2 !important;
+}
+
+@media (max-width: 700px) {
+  .showcase-pack {
+    height: 285px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    inset: 0 0 58px 0 !important;
+  }
+
+  .showcase-pack .booster-price {
+    bottom: -2px !important;
+    min-width: 120px !important;
+    font-size: 15px !important;
+    padding: 10px 12px !important;
+  }
+
+  #playMiniBtn {
+    min-height: 78px !important;
+    font-size: 20px !important;
+  }
+
+  #mainScreen > .panel > .row {
+    gap: 12px !important;
+    margin-top: 18px !important;
+  }
+}
+
+
+/* v35: smaller main menu + prices clearly BELOW pack artworks */
+.app {
+  max-width: 720px !important;
+  padding: 22px 34px !important;
+}
+
+.title {
+  font-size: 30px !important;
+}
+
+.profile {
+  font-size: 13px !important;
+}
+
+.coins {
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+}
+
+.status-row {
+  gap: 14px !important;
+  margin-bottom: 16px !important;
+}
+
+.timer-panel,
+.completed-panel {
+  min-height: 74px !important;
+  font-size: 14px !important;
+  border-radius: 12px !important;
+}
+
+.completed-panel {
+  font-size: 15px !important;
+}
+
+#packArea {
+  height: 405px !important;
+  min-height: 405px !important;
+  padding: 20px 24px 24px !important;
+  border-radius: 12px !important;
+}
+
+.stage-title {
+  font-size: 21px !important;
+  margin: 0 0 12px !important;
+  gap: 18px !important;
+}
+
+.stage-title span {
+  max-width: 58px !important;
+  height: 3px !important;
+}
+
+.pack-showcase {
+  gap: 28px !important;
+  margin-top: 4px !important;
+  align-items: start !important;
+}
+
+.showcase-pack {
+  width: 160px !important;
+  max-width: 160px !important;
+  height: 300px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 62px 0 !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+}
+
+.showcase-pack .booster-price {
+  position: absolute !important;
+  left: 50% !important;
+  top: auto !important;
+  bottom: 0 !important;
+  transform: translateX(-50%) !important;
+  min-width: 136px !important;
+  width: auto !important;
+  font-size: 17px !important;
+  font-weight: 950 !important;
+  padding: 11px 14px !important;
+  border-radius: 999px !important;
+  background: rgba(15,23,42,.92) !important;
+  color: #fff !important;
+  border: 2px solid rgba(255,255,255,.22) !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,.45) !important;
+  z-index: 8 !important;
+  white-space: nowrap !important;
+}
+
+#mainScreen > .panel > .row {
+  margin-top: 18px !important;
+  gap: 14px !important;
+}
+
+#mainScreen > .panel > .row button,
+#bulkScrapMain button {
+  min-height: 64px !important;
+  border-radius: 11px !important;
+  font-size: 16px !important;
+  padding: 12px 16px !important;
+}
+
+#playMiniBtn {
+  min-height: 64px !important;
+  font-size: 17px !important;
+}
+
+@media (max-width: 700px) {
+  .app {
+    max-width: 430px !important;
+    padding: 18px !important;
+  }
+
+  #packArea {
+    height: 370px !important;
+    min-height: 370px !important;
+    padding: 18px 12px 18px !important;
+  }
+
+  .stage-title {
+    font-size: 17px !important;
+    gap: 10px !important;
+  }
+
+  .pack-showcase {
+    gap: 8px !important;
+  }
+
+  .showcase-pack {
+    width: 108px !important;
+    max-width: 108px !important;
+    height: 235px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    inset: 0 0 48px 0 !important;
+  }
+
+  .showcase-pack .booster-price {
+    bottom: 0 !important;
+    min-width: 92px !important;
+    font-size: 11px !important;
+    padding: 8px 8px !important;
+  }
+}
+
+
+/* v36: 20% smaller main menu, 30% smaller pack artworks, scrap next to album */
+.app {
+  max-width: 576px !important;
+  padding: 18px 27px !important;
+}
+
+.topbar {
+  margin-bottom: 14px !important;
+}
+
+.title {
+  font-size: 24px !important;
+}
+
+.profile {
+  font-size: 11px !important;
+}
+
+.coins {
+  font-size: 12px !important;
+  padding: 8px 13px !important;
+}
+
+.status-row {
+  gap: 11px !important;
+  margin-bottom: 13px !important;
+}
+
+.timer-panel,
+.completed-panel {
+  min-height: 59px !important;
+  font-size: 12px !important;
+  border-radius: 10px !important;
+}
+
+.completed-panel {
+  font-size: 12px !important;
+}
+
+#packArea {
+  height: 324px !important;
+  min-height: 324px !important;
+  padding: 16px 19px 19px !important;
+  border-radius: 10px !important;
+}
+
+.stage-title {
+  font-size: 17px !important;
+  margin: 0 0 10px !important;
+  gap: 14px !important;
+}
+
+.stage-title span {
+  max-width: 46px !important;
+  height: 2px !important;
+}
+
+.pack-showcase {
+  gap: 22px !important;
+  margin-top: 3px !important;
+}
+
+.showcase-pack {
+  width: 112px !important;
+  max-width: 112px !important;
+  height: 230px !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 48px 0 !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+}
+
+.showcase-pack .booster-price {
+  bottom: -36px !important;
+  min-width: 102px !important;
+  font-size: 13px !important;
+  padding: 8px 10px !important;
+  border-radius: 999px !important;
+}
+
+#mainScreen > .panel > .row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 11px !important;
+  margin-top: 14px !important;
+}
+
+#playMiniBtn {
+  grid-column: 1 / -1 !important;
+  order: 1 !important;
+  min-height: 51px !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+}
+
+#bulkScrapMain {
+  grid-column: 1 !important;
+  order: 2 !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+#albumBtn {
+  grid-column: 2 !important;
+  order: 3 !important;
+}
+
+#mainScreen > .panel > .row button,
+#bulkScrapMain button {
+  min-height: 51px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+  padding: 10px 12px !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 700px) {
+  .app {
+    max-width: 344px !important;
+    padding: 14px !important;
+  }
+
+  #packArea {
+    height: 296px !important;
+    min-height: 296px !important;
+    padding: 14px 10px 14px !important;
+  }
+
+  .stage-title {
+    font-size: 14px !important;
+    gap: 8px !important;
+  }
+
+  .pack-showcase {
+    gap: 6px !important;
+  }
+
+  .showcase-pack {
+    width: 76px !important;
+    max-width: 76px !important;
+    height: 180px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    inset: 0 0 39px 0 !important;
+  }
+
+  .showcase-pack .booster-price {
+    min-width: 70px !important;
+    font-size: 9px !important;
+    padding: 6px 5px !important;
+  }
+}
+
+
+/* v37: pack artwork images 50% smaller in main menu */
+.showcase-pack {
+  width: 92px !important;
+  max-width: 92px !important;
+  height: 185px !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 42px 0 !important;
+  background-size: 50% auto !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+}
+
+.showcase-pack .booster-price {
+  min-width: 88px !important;
+  font-size: 11px !important;
+  padding: 7px 8px !important;
+}
+
+.pack-showcase {
+  gap: 14px !important;
+}
+
+@media (max-width: 700px) {
+  .showcase-pack {
+    width: 64px !important;
+    max-width: 64px !important;
+    height: 150px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    background-size: 50% auto !important;
+    inset: 0 0 34px 0 !important;
+  }
+
+  .showcase-pack .booster-price {
+    min-width: 58px !important;
+    font-size: 8px !important;
+    padding: 5px 5px !important;
+  }
+}
+
+
+/* v38 Remote Worker: Speed TCG */
+.title { letter-spacing: .3px !important; }
+.stage-title { color: #f8fafc !important; }
+#playMiniBtn { background: linear-gradient(135deg,#38bdf8,#2563eb) !important; }
+#bulkScrapMain button, #bulkScrapMainBtn {
+  background: linear-gradient(135deg,#ef4444,#f97316) !important;
+  border: 2px solid rgba(255,255,255,.18) !important;
+  color: white !important;
+}
+#albumBtn {
+  background: linear-gradient(135deg,rgba(14,165,233,.20),rgba(30,64,175,.58)) !important;
+  color: white !important;
+}
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  background-size: 50% auto !important;
+}
+.full-card-img,
+.pack-reveal-card img {
+  object-fit: contain !important;
+}
+
+
+/* v39: card name below artwork inside pulled-card frame */
+.pack-reveal-card.has-image {
+  padding: 6px !important;
+  background: linear-gradient(180deg,#0b1220,#050812) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+}
+
+.pack-reveal-card.has-image img {
+  width: 100% !important;
+  height: calc(100% - 42px) !important;
+  object-fit: contain !important;
+  border-radius: 12px !important;
+  background: #050812 !important;
+  display: block !important;
+}
+
+.pack-reveal-name {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 4px 4px;
+  font-size: 11px;
+  line-height: 1.05;
+  font-weight: 950;
+  letter-spacing: .35px;
+  text-align: center;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow:
+    0 1px 0 #000,
+    0 0 10px rgba(56,189,248,.55),
+    0 0 16px rgba(255,255,255,.20);
+  border-radius: 10px;
+  background: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.pack-reveal-card.uncommon .pack-reveal-name {
+  color: #bbf7d0;
+  text-shadow: 0 1px 0 #000, 0 0 12px rgba(34,197,94,.7);
+}
+
+.pack-reveal-card.rare .pack-reveal-name {
+  color: #fde68a;
+  text-shadow: 0 1px 0 #000, 0 0 12px rgba(250,204,21,.75);
+}
+
+.pack-reveal-card.epic .pack-reveal-name {
+  color: #e9d5ff;
+  text-shadow: 0 1px 0 #000, 0 0 14px rgba(168,85,247,.85);
+}
+
+.pack-reveal-card.legendary .pack-reveal-name {
+  color: #fed7aa;
+  text-shadow: 0 1px 0 #000, 0 0 16px rgba(251,146,60,1);
+}
+
+@media (max-width: 700px) {
+  .pack-reveal-name {
+    min-height: 30px;
+    font-size: 9px;
+    letter-spacing: .2px;
+  }
+
+  .pack-reveal-card.has-image img {
+    height: calc(100% - 36px) !important;
+  }
+}
+
+
+/* v41: pack pull chances shown between pack artwork and coin price */
+.showcase-pack .pack-chance {
+  display: flex !important;
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 8px !important;
+  transform: translateX(-50%) !important;
+  z-index: 7 !important;
+  width: 118px !important;
+  min-height: 54px !important;
+  padding: 6px 8px !important;
+  border-radius: 11px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  background: rgba(3,7,18,.72) !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  backdrop-filter: blur(7px) !important;
+  box-shadow: 0 7px 18px rgba(0,0,0,.42) !important;
+  font-size: 9px !important;
+  line-height: 1.05 !important;
+  font-weight: 950 !important;
+  text-align: center !important;
+  letter-spacing: .25px !important;
+  pointer-events: none !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,.75) !important;
+}
+
+.showcase-pack .pack-chance span {
+  display: block !important;
+  white-space: nowrap !important;
+}
+
+.showcase-pack .pack-chance span:nth-child(1) { color: #f8fafc !important; }
+.showcase-pack .pack-chance span:nth-child(2) { color: #fde047 !important; }
+.showcase-pack .pack-chance span:nth-child(3) { color: #d8b4fe !important; }
+.showcase-pack .pack-chance span:nth-child(4) { color: #fdba74 !important; }
+
+.showcase-pack .booster-price {
+  bottom: -36px !important;
+  z-index: 8 !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 120px 0 !important;
+}
+
+.showcase-pack {
+  height: 255px !important;
+}
+
+@media (max-width: 700px) {
+  .showcase-pack .pack-chance {
+    bottom: 4px !important;
+    width: 76px !important;
+    min-height: 45px !important;
+    padding: 5px 4px !important;
+    font-size: 6.9px !important;
+    border-radius: 8px !important;
+    gap: 1px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    inset: 0 0 105px 0 !important;
+  }
+
+  .showcase-pack {
+    height: 210px !important;
+  }
+}
+
+
+/* v43: push pack odds + coin price clearly below pack artworks */
+.showcase-pack {
+  height: 310px !important;
+  overflow: visible !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  inset: 0 0 145px 0 !important;
+}
+
+.showcase-pack .pack-chance {
+  bottom: -22px !important;
+  z-index: 9 !important;
+}
+
+.showcase-pack .booster-price {
+  bottom: -76px !important;
+  z-index: 10 !important;
+}
+
+@media (max-width: 700px) {
+  .showcase-pack {
+    height: 250px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    inset: 0 0 128px 0 !important;
+  }
+
+  .showcase-pack .pack-chance {
+    bottom: -24px !important;
+  }
+
+  .showcase-pack .booster-price {
+    bottom: -68px !important;
+  }
+}
+
+
+/* v51:
+   - fixed pull ranges so cards 11-18 can be drawn
+   - balanced duplicate scrap rewards
+   - start coins 1500
+   - Fake Productivity gives +250
+*/
+
+/* v52: Album rarity hints, achievements wording, Bad Luck Affix progression, congratulations animation */
+.badluck-panel {
+  grid-column: 1 / -1;
+  margin-top: -6px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 950;
+  color: #fecaca;
+  background: rgba(127,29,29,.22);
+  border: 1px solid rgba(248,113,113,.35);
+  text-shadow: 0 0 10px rgba(239,68,68,.45);
+}
+.slot-rarity {
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+.slot-rarity.common { color:#f8fafc; }
+.slot-rarity.rare { color:#fde047; text-shadow:0 0 8px rgba(250,204,21,.45); }
+.slot-rarity.epic { color:#d8b4fe; text-shadow:0 0 8px rgba(168,85,247,.55); }
+.slot-rarity.legendary { color:#fdba74; text-shadow:0 0 10px rgba(251,146,60,.7); }
+.setbar { grid-template-columns: 1fr !important; }
+.setbox { font-size: 10px !important; line-height:1.25 !important; text-align:left !important; }
+.congrats-overlay {
+  position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center;
+  padding: 24px;
+  background: radial-gradient(circle at center, rgba(250,204,21,.22), rgba(168,85,247,.16), rgba(2,6,23,.92) 70%);
+}
+.congrats-overlay.show { display: flex; }
+.congrats-card {
+  width: min(92vw, 460px); border-radius: 28px; padding: 26px 22px; text-align: center;
+  background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(2,6,23,.98));
+  border: 3px solid #facc15;
+  box-shadow: 0 0 60px rgba(250,204,21,.65), 0 0 120px rgba(168,85,247,.35), inset 0 0 34px rgba(255,255,255,.08);
+  animation: congratsPop .75s cubic-bezier(.2,1.3,.2,1) forwards;
+  position: relative; overflow: hidden;
+}
+.congrats-card:before {
+  content:""; position:absolute; inset:-60%;
+  background: conic-gradient(from 0deg, transparent, rgba(250,204,21,.28), transparent, rgba(168,85,247,.22), transparent);
+  animation: spin 2.8s linear infinite;
+}
+.congrats-card > * { position: relative; z-index: 2; }
+.congrats-title { font-size: 34px; font-weight:950; color:#fef3c7; text-shadow:0 0 20px rgba(250,204,21,.75); margin-bottom:10px; }
+.congrats-text { color:#e2e8f0; font-weight:850; line-height:1.35; margin-bottom:14px; }
+.congrats-tier { color:#fca5a5; font-weight:950; font-size:18px; margin:10px 0 16px; }
+.congrats-card button { margin-top:8px; background:linear-gradient(135deg,#facc15,#fb923c); color:#111827; }
+@keyframes congratsPop {
+  0% { transform: scale(.55) rotate(-4deg); opacity:0; }
+  60% { transform: scale(1.06) rotate(1deg); opacity:1; }
+  100% { transform: scale(1) rotate(0); opacity:1; }
+}
+
+
+/* v53: completed tier timer history */
+.tier-time-history {
+  grid-column: 1 / -1;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: -4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(2,6,23,.32);
+  border: 1px solid rgba(148,163,184,.16);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.tier-time-history.show {
+  display: flex;
+}
+
+.tier-time-history div {
+  color: #bbf7d0;
+  text-shadow: 0 0 8px rgba(34,197,94,.35);
+}
+
+
+/* v54: tier stack + rarity progress */
+
+.badluck-panel{
+  order:2;
+}
+
+.tier-time-history{
+  order:1;
+  margin-top:0 !important;
+  margin-bottom:-2px;
+  background: rgba(8,15,35,.72) !important;
+  border:1px solid rgba(96,165,250,.18) !important;
+}
+
+.tier-time-history div{
+  padding:4px 0;
+  border-radius:8px;
+  font-weight:950;
+}
+
+.tier-time-history div:nth-child(odd){
+  color:#93c5fd;
+  text-shadow:0 0 8px rgba(59,130,246,.4);
+}
+
+.tier-time-history div:nth-child(even){
+  color:#c4b5fd;
+  text-shadow:0 0 8px rgba(168,85,247,.4);
+}
+
+.completed-panel{
+  min-height:72px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+  align-items:center !important;
+  gap:4px !important;
+  line-height:1.1 !important;
+}
+
+.collection-total{
+  font-size:18px;
+  font-weight:950;
+  color:#4ade80;
+}
+
+.collection-rarity-lines{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  font-size:10px;
+  font-weight:900;
+}
+
+.collection-rarity-lines .common{
+  color:#f8fafc;
+}
+
+.collection-rarity-lines .rare{
+  color:#fde047;
+}
+
+.collection-rarity-lines .epic{
+  color:#d8b4fe;
+}
+
+.collection-rarity-lines .legendary{
+  color:#fdba74;
+}
+
+@media (max-width:700px){
+
+  .completed-panel{
+    min-height:82px !important;
+  }
+
+  .collection-total{
+    font-size:15px;
+  }
+
+  .collection-rarity-lines{
+    font-size:8px;
+  }
+
+}
+
+
+/* v55: Time Records panel + current time bar, remove legendary highlight bar */
+
+.timer-panel{
+  flex-direction:column !important;
+  gap:4px !important;
+  line-height:1.15 !important;
+}
+
+.time-record-title{
+  font-size:14px;
+  font-weight:950;
+  color:#e0f2fe;
+  text-shadow:0 0 10px rgba(56,189,248,.35);
+}
+
+.time-record-lines{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  font-size:10px;
+  font-weight:900;
+}
+
+.time-record-lines .empty-record{
+  color:#94a3b8;
+}
+
+.time-record-lines .tier-blue{
+  color:#93c5fd;
+  text-shadow:0 0 8px rgba(59,130,246,.35);
+}
+
+.time-record-lines .tier-purple{
+  color:#c4b5fd;
+  text-shadow:0 0 8px rgba(168,85,247,.35);
+}
+
+.tier-time-history{
+  order:1;
+  margin-top:0 !important;
+  margin-bottom:-2px;
+  background: rgba(8,15,35,.72) !important;
+  border:1px solid rgba(96,165,250,.18) !important;
+  color:#e0f2fe !important;
+  font-size:12px !important;
+  font-weight:950 !important;
+  text-align:center !important;
+  text-shadow:0 0 8px rgba(56,189,248,.35) !important;
+}
+
+.tier-time-history.show{
+  display:flex !important;
+}
+
+.tier-time-history .current-time-line{
+  color:#e0f2fe !important;
+  text-shadow:0 0 8px rgba(56,189,248,.35) !important;
+}
+
+/* no animated / highlighted backing behind Legendary rarity count */
+.collection-rarity-lines .legendary{
+  color:#fdba74 !important;
+  background:none !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+  animation:none !important;
+  filter:none !important;
+}
+
+
+/* v56 compact main menu scaling */
+
+.main-screen,
+#mainScreen,
+.main-container,
+.game-shell{
+  zoom: 0.88;
+}
+
+body{
+  overflow-x:hidden;
+}
+
+.pack-section{
+  margin-bottom:14px !important;
+}
+
+.showcase-pack{
+  transform:scale(.92);
+  transform-origin:top center;
+}
+
+.topbar,
+.header,
+.status-grid{
+  margin-bottom:10px !important;
+}
+
+.main-buttons{
+  margin-top:8px !important;
+  gap:10px !important;
+}
+
+@media (max-width:700px){
+
+  .main-screen,
+  #mainScreen,
+  .main-container,
+  .game-shell{
+    zoom: 0.82;
+  }
+
+  .showcase-pack{
+    transform:scale(.86);
+  }
+
+}
+
+
+/* v57 menu polish */
+.profile {
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-end !important;
+  justify-content:flex-end !important;
+  gap:3px !important;
+  transform: translateY(4px);
+}
+
+#playerName {
+  margin-bottom:0 !important;
+  line-height:1 !important;
+}
+
+.stage-title {
+  position:relative !important;
+}
+
+.pack-title-coins {
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:72px;
+  padding:7px 12px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:950;
+  color:#facc15;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 8px 20px rgba(0,0,0,.22);
+  text-shadow:none;
+}
+
+/* Force all three booster pack artwork containers to identical size */
+#basicPackVisual,
+#advancedPackVisual,
+#elitePackVisual {
+  width: 92px !important;
+  max-width: 92px !important;
+  height: 185px !important;
+  transform: scale(.92) !important;
+  transform-origin: top center !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before {
+  background-size: 50% auto !important;
+  background-position:center top !important;
+}
+
+/* Explicitly neutralize elite extra animation/scale/pulse on main menu */
+#elitePackVisual,
+#elitePackVisual:hover,
+#elitePackVisual.pack-elite {
+  animation:none !important;
+  filter:none !important;
+}
+
+/* Remove empty result heading/space */
+#resultPanel h3,
+#resultPanel:empty {
+  display:none !important;
+}
+
+#resultPanel {
+  margin-top:0 !important;
+}
+
+@media (max-width:700px){
+  .pack-title-coins{
+    right:8px;
+    font-size:10px;
+    min-width:54px;
+    padding:5px 8px;
+  }
+
+  #basicPackVisual,
+  #advancedPackVisual,
+  #elitePackVisual {
+    width: 64px !important;
+    max-width: 64px !important;
+    height: 150px !important;
+    transform: scale(.86) !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before {
+    background-size: 50% auto !important;
+  }
+}
+
+
+/* v58 tighter lower spacing + remove top right coin pill */
+
+#coins{
+  display:none !important;
+}
+
+.profile .coin-pill,
+.profile .coins,
+.profile .currency,
+.profile .coin-counter{
+  display:none !important;
+}
+
+/* pull odds closer to buttons */
+.showcase-pack .pack-chance{
+  bottom:-118px !important;
+}
+
+.showcase-pack .booster-price{
+  bottom:-172px !important;
+}
+
+/* move action buttons higher */
+.main-buttons,
+.button-row,
+.bottom-actions{
+  margin-top:-18px !important;
+  position:relative;
+  z-index:5;
+}
+
+/* reduce empty vertical gap below odds */
+.pack-area,
+.pack-section,
+.showcase-wrapper{
+  padding-bottom:10px !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack .pack-chance{
+    bottom:-96px !important;
+  }
+
+  .showcase-pack .booster-price{
+    bottom:-145px !important;
+  }
+
+  .main-buttons,
+  .button-row,
+  .bottom-actions{
+    margin-top:-14px !important;
+  }
+
+}
+
+
+/* v59: bigger readable odds + epic/legendary-only pull animations */
+
+.showcase-pack .pack-chance{
+  width:138px !important;
+  min-height:70px !important;
+  padding:9px 11px !important;
+  font-size:11px !important;
+  line-height:1.16 !important;
+  border-radius:13px !important;
+  bottom:-124px !important;
+  background:rgba(3,7,18,.84) !important;
+  border:1px solid rgba(255,255,255,.24) !important;
+}
+
+.showcase-pack .pack-chance span{
+  margin:1px 0 !important;
+}
+
+.showcase-pack .booster-price{
+  bottom:-188px !important;
+}
+
+@media (max-width:700px){
+  .showcase-pack .pack-chance{
+    width:94px !important;
+    min-height:56px !important;
+    padding:7px 6px !important;
+    font-size:8px !important;
+    bottom:-104px !important;
+  }
+
+  .showcase-pack .booster-price{
+    bottom:-160px !important;
+  }
+}
+
+.rarity-burst.common,
+.rarity-burst.rare,
+.card-pull-animation.common,
+.card-pull-animation.rare,
+.pull-animation.common,
+.pull-animation.rare {
+  display:none !important;
+}
+
+
+/* v60 rarity-based achievements + completed rarity ticks */
+.setbox {
+  text-align:center !important;
+  font-weight:950 !important;
+}
+
+.collection-rarity-lines div {
+  white-space: nowrap;
+}
+
+.collection-rarity-lines .common,
+.collection-rarity-lines .rare,
+.collection-rarity-lines .epic,
+.collection-rarity-lines .legendary {
+  display:block;
+}
+
+
+/* v62 album cleanup */
+#albumScreen #bulkScrapBtn,
+#albumScreen .bulk-scrap-btn {
+  display: none !important;
+}
+
+#albumScreen .setbar {
+  margin-bottom: 12px !important;
+}
+
+#albumScreen .setbox {
+  text-align: center !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  background: rgba(15,23,42,.78) !important;
+  border: 1px solid rgba(96,165,250,.22) !important;
+  color: #e2e8f0 !important;
+}
+
+
+/* v63 legendary pull visibility fix */
+
+.pull-card,
+.reveal-card,
+.card-reveal,
+.opened-card,
+.pack-result-card {
+  position: relative !important;
+  z-index: 40 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.legendary-overlay,
+.legendary-animation,
+.rarity-overlay {
+  pointer-events: none !important;
+}
+
+.legendary .pull-card,
+.legendary .reveal-card,
+.legendary .card-reveal,
+.legendary .opened-card {
+  animation: legendaryCardAppear .45s ease-out !important;
+}
+
+@keyframes legendaryCardAppear {
+  from {
+    transform: scale(.82);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+
+/* v64: non-blocking epic/legendary pull banner */
+.pull-effect {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding-top: 72px !important;
+  z-index: 9998 !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  background: transparent !important;
+  transition: opacity .18s ease !important;
+}
+
+.pull-effect.show {
+  opacity: 1 !important;
+}
+
+.effect-box {
+  max-width: min(92vw, 420px) !important;
+  padding: 14px 22px !important;
+  border-radius: 18px !important;
+  font-size: 22px !important;
+  line-height: 1.05 !important;
+  background: rgba(2,6,23,.88) !important;
+  backdrop-filter: blur(8px) !important;
+  transform: none !important;
+  animation: pullBannerPop .32s ease forwards !important;
+}
+
+.effect-small {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+}
+
+.effect-legendary {
+  background: transparent !important;
+  animation: none !important;
+}
+
+.effect-legendary .effect-box {
+  border-color: #fb923c !important;
+  color: #fed7aa !important;
+  box-shadow: 0 0 34px rgba(251,146,60,.82), 0 0 70px rgba(250,204,21,.26) !important;
+}
+
+.effect-epic .effect-box {
+  border-color: #a855f7 !important;
+  color: #e9d5ff !important;
+  box-shadow: 0 0 34px rgba(168,85,247,.72) !important;
+}
+
+@keyframes pullBannerPop {
+  from { transform: translateY(-12px) scale(.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Keep the card grid always visible while a banner is shown */
+#packCards,
+.pack-cards,
+.pack-reveal-card {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+
+/* v65 global leaderboard frontend */
+.leaderboard-main-wrap {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.leaderboard-main-btn {
+  width: 100%;
+  min-height: 54px;
+  border-radius: 14px;
+  margin-top: 0;
+  font-size: 15px;
+  color: #07111f;
+  background: linear-gradient(135deg,#facc15,#f59e0b);
+  box-shadow: 0 10px 26px rgba(250,204,21,.24);
+}
+
+.leaderboard-panel {
+  padding: 16px !important;
+  background: rgba(255,255,255,.075) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.28) !important;
+}
+
+.leaderboard-note {
+  margin-bottom: 12px;
+}
+
+.my-rank-card {
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  background: linear-gradient(135deg,rgba(34,197,94,.18),rgba(14,165,233,.13));
+  border: 1px solid rgba(34,197,94,.32);
+  font-size: 15px;
+  font-weight: 950;
+  color: #bbf7d0;
+  text-align: center;
+  box-shadow: 0 0 22px rgba(34,197,94,.12);
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15,23,42,.68);
+  border: 1px solid rgba(255,255,255,.10);
+  font-weight: 900;
+}
+
+.leaderboard-row.me {
+  border-color: rgba(250,204,21,.55);
+  background: linear-gradient(135deg,rgba(250,204,21,.18),rgba(15,23,42,.74));
+  box-shadow: 0 0 22px rgba(250,204,21,.12);
+}
+
+.leaderboard-rank {
+  color: #facc15;
+  font-weight: 950;
+  text-align: center;
+}
+
+.leaderboard-name {
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-score {
+  color: #93c5fd;
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.leaderboard-empty {
+  padding: 16px;
+  border-radius: 14px;
+  text-align: center;
+  color: #cbd5e1;
+  background: rgba(15,23,42,.62);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+@media (max-width:700px){
+  .leaderboard-main-btn {
+    min-height: 48px;
+    font-size: 12px;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 34px 1fr auto;
+    gap: 7px;
+    padding: 9px 8px;
+  }
+
+  .leaderboard-score {
+    font-size: 10px;
+  }
+}
+
+</style>
+</head>
+<body>
+  <div class="app">
+    <div id="loginScreen" class="panel login-card hidden">
+      <h1>REMOTE WORKER</h1>
+      <p class="small">Das perfekte Speed-TCG für langweilige Homeoffice-Meetings.</p>
+      <input id="nameInput" placeholder="Dein Spielername" maxlength="16" />
+      <button id="startBtn">PROFIL ERSTELLEN</button>
+    </div>
+
+    <div id="gameScreen" class="hidden">
+      <div class="topbar">
+        <div class="logo-wrap">
+          <div class="back-arrow" id="topBackArrow">←</div>
+          <div class="title">REMOTE WORKER</div>
+        </div>
+        <div class="profile">
+          <div id="playerName">Pilot</div>
+          <div class="coins" id="coins">🪙 1500</div>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="timer-panel" id="timerPanel">⏱ Zeit: 00:00:00</div>
+        <div class="completed-panel" id="collectedPanel">
+          <div class="collection-total">0/30 Cards</div>
+          <div class="collection-rarity-lines">
+            <div class="common">0/16 Common</div>
+            <div class="rare">0/10 Rare</div>
+            <div class="epic">0/3 Epic</div>
+            <div class="legendary">0/1 Legendary</div>
+          </div>
+        </div>
+        <div class="badluck-panel" id="badLuckPanel">T0: 0% Bad Luck Affix</div>
+        <div class="tier-time-history" id="tierTimeHistory"></div>
+      </div>
+
+      <div id="mainScreen">
+        <div class="panel">
+          <div class="pack" id="packArea">
+            <div class="pack-content" id="packContent">
+              <div class="stage-title" id="stageTitle">
+                <span></span>
+                OPEN A REMOTE WORK PACK
+                <span></span>
+                <div class="pack-title-coins" id="packTitleCoins">🪙 0</div>
+              </div>
+
+              <div class="pack-showcase" id="packShowcase">
+                <div class="booster-button pack-basic showcase-pack" id="basicPackVisual" onclick="openPack('basic')">
+                  <div class="booster-shine"></div>
+                  <div class="booster-top">COFFEE BREAK</div>
+                  <div class="booster-title">COFFEE<br>BREAK</div>
+                  <div class="booster-robot">🤖</div>
+                  <div class="booster-price">🪙 100 COINS</div>
+                  <div class="pack-chance">
+                    <span>78% COMMON</span>
+                    <span>18% RARE</span>
+                    <span>4% EPIC</span>
+                  </div>
+                </div>
+                <div class="booster-button pack-advanced showcase-pack" id="advancedPackVisual" onclick="openPack('advanced')">
+                  <div class="booster-shine"></div>
+                  <div class="booster-top">DEADLINE</div>
+                  <div class="booster-title">DEADLINE<br>PACK</div>
+                  <div class="booster-robot">🦾</div>
+                  <div class="booster-price">🪙 250 COINS</div>
+                  <div class="pack-chance">
+                    <span>45% COMMON</span>
+                    <span>38% RARE</span>
+                    <span>15% EPIC</span>
+                    <span>2% LEGENDARY</span>
+                  </div>
+                </div>
+                <div class="booster-button pack-elite showcase-pack" id="elitePackVisual" onclick="openPack('elite')">
+                  <div class="booster-shine"></div>
+                  <div class="booster-top">OVERLORD</div>
+                  <div class="booster-title">CORPORATE<br>OVERLORD</div>
+                  <div class="booster-robot">🔥</div>
+                  <div class="booster-price">🪙 600 COINS</div>
+                  <div class="pack-chance">
+                    <span>15% COMMON</span>
+                    <span>40% RARE</span>
+                    <span>32% EPIC</span>
+                    <span>13% LEGENDARY</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="pack-cards hidden" id="packCards"></div>
+            <button id="moveCardsBtn" class="move-btn hidden">MOVE CARDS TO COLLECTION</button>
+          </div>
+<div class="row">
+            <div id="bulkScrapMain"><button id="bulkScrapMainBtn">♻ SCRAP ALL DUPLICATES<br><span id="bulkScrapMainValue">+0 COINS</span></button></div>
+            <button class="secondary" id="albumBtn">▣ CHECK MY COLLECTION</button>
+            <button class="secondary" id="playMiniBtn">FAKE PRODUCTIVITY (+250)</button>
+          </div>
+
+        </div>
+
+        <div class="leaderboard-main-wrap">
+            <button class="leaderboard-main-btn" id="leaderboardBtn">🏆 CHECK GLOBAL LEADERBOARD</button>
+          </div>
+
+        <div class="panel hidden" id="resultPanel">
+          
+          <div class="cards" id="cards"></div>
+        </div>
+      </div>
+
+
+      <div id="leaderboardScreen" class="hidden">
+        <div class="panel leaderboard-panel">
+          <h2>Global Leaderboard</h2>
+          <div class="small leaderboard-note">
+            Top 10 Spieler nach höchster T-Stufe und Gesamtzeit bis dahin.
+          </div>
+
+          <div class="my-rank-card" id="myRankCard">
+            Your Position: —
+          </div>
+
+          <div class="leaderboard-list" id="leaderboardList"></div>
+
+          <button class="secondary" id="leaderboardBackBtn">ZURÜCK</button>
+        </div>
+      </div>
+
+      <div id="albumScreen" class="hidden">
+        <div class="panel">
+          <h2>Remote Worker Collection</h2>
+          <div class="small" id="progressText">0/30 gesammelt</div>
+          <div class="setbar">
+            <div class="setbox" id="set1">Collect all Common Cards<br>Reward: +500 Coins · open</div>
+            <div class="setbox" id="set2">Collect all Rare Cards<br>Reward: +1000 Coins · open</div>
+            <div class="setbox" id="set3">Collect all Epic Cards<br>Reward: +2500 Coins · open</div>
+          </div>
+
+          
+        </div>
+        <div class="panel">
+          <div class="album-grid" id="albumGrid"></div>
+          <button class="secondary" id="backBtn">ZURÜCK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="reset-corner" id="resetBtn">Reset</button>
+
+  <div class="pull-effect" id="pullEffect">
+    <div class="effect-box" id="effectBox">
+      RARE PULL
+      <div class="effect-small" id="effectSmall"></div>
+    </div>
+  </div>
+
+
+  <div class="congrats-overlay" id="congratsOverlay">
+    <div class="congrats-card">
+      <div class="congrats-title">🎉 Congratulations!</div>
+      <div class="congrats-text" id="congratsText">You collected all 30 cards.</div>
+      <div class="congrats-tier" id="congratsTierText">Next run: T1 · 5% Bad Luck Affix</div>
+      <button id="newRunBtn">START NEXT RUN</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let playerName = localStorage.getItem("playerName") || "";
+    let coins = Number(localStorage.getItem("coins")) || 1500;
+    let collection = JSON.parse(localStorage.getItem("collection") || "{}");
+    let claimed = JSON.parse(localStorage.getItem("claimed") || "{}");
+    let lastCoinClaim = Number(localStorage.getItem("lastCoinClaim")) || 0;
+    let runStartTime = Number(localStorage.getItem("runStartTime"));
+    if(!runStartTime || Number.isNaN(runStartTime)){
+      runStartTime = Date.now();
+      localStorage.setItem("runStartTime", runStartTime);
+    }
+    let completionTime = Number(localStorage.getItem("completionTime")) || 0;
+    let badLuckTier = Number(localStorage.getItem("badLuckTier")) || 0;
+    let tierTimes = JSON.parse(localStorage.getItem("tierTimes") || "[]");
+    const COIN_COOLDOWN_MS = 30000;
+
+    let selectedPack = "basic";
+    let pendingPull = [];
+
+    const packTypes = {
+      basic: {
+        name: "Coffee Break Pack",
+        price: 100,
+        className: "pack-basic",
+        label: "BASIC",
+        chances: { common: 78, uncommon: 0, rare: 18, epic: 4, legendary: 0 }
+      },
+      advanced: {
+        name: "Deadline Pack",
+        price: 250,
+        className: "pack-advanced",
+        label: "ADVANCED",
+        chances: { common: 45, uncommon: 0, rare: 38, epic: 15, legendary: 2 }
+      },
+      elite: {
+        name: "Corporate Overlord Pack",
+        price: 600,
+        className: "pack-elite",
+        label: "ELITE",
+        chances: { common: 15, uncommon: 0, rare: 40, epic: 32, legendary: 13 }
+      }
+    };
+
+    const robotNames = [
+      "Ancient Mouse", "Motivation Mug", "Mute Master", "Comfy Mode", "Task Tracker",
+      "Webcam Warrior", "Hydration Hero", "Comfy Professional", "Focus Mode", "Do Not Disturb",
+      "Pomodoro Pro", "Clean Setup", "Focus Planner", "Deep Work Timer", "Noise Ninja",
+      "Focus Light", "Caffeine Boost", "Grind Journal", "Discipline Frame", "Productivity Station",
+      "Ergonomic Chair", "Standing Desk", "Blue Light Glasses", "Air Purifier", "Focus Book",
+      "Pomodoro Timer", "Noise Cancelling Headphones", "Infinity Fidget Cube", "Vacation Calendar", "Super Remote Worker"
+    ];
+
+    const imagePaths = {
+      1: "images/robot_01.png",
+      2: "images/robot_02.png",
+      3: "images/robot_03.png",
+      4: "images/robot_04.png",
+      5: "images/robot_05.png",
+      6: "images/robot_06.png",
+      7: "images/robot_07.png",
+      8: "images/robot_08.png",
+      9: "images/robot_09.png",
+      10: "images/robot_10.png",
+      11: "images/robot_11.png",
+      12: "images/robot_12.png",
+      13: "images/robot_13.png",
+      14: "images/robot_14.png",
+      15: "images/robot_15.png",
+      16: "images/robot_16.png",
+      17: "images/robot_17.png",
+      18: "images/robot_18.png",
+      19: "images/robot_19.png",
+      20: "images/robot_20.png",
+      21: "images/robot_21.png",
+      22: "images/robot_22.png",
+      23: "images/robot_23.png",
+      24: "images/robot_24.png",
+      25: "images/robot_25.png",
+      26: "images/robot_26.png",
+      27: "images/robot_27.png",
+      28: "images/robot_28.png",
+      29: "images/robot_29.png",
+      30: "images/robot_30.png"
+    };
+
+    const robots = Array.from({length:30}, (_,i)=> {
+      const n = i + 1;
+      return { number: n, name: robotNames[i], rarity: getRarity(n), image: imagePaths[n] || "" };
+    });
+
+    function getRarity(n){
+      if(n <= 16) return "common";
+      if(n <= 26) return "rare";
+      if(n <= 29) return "epic";
+      return "legendary";
+    }
+
+    function getFallbackIcon(robot){
+      if(robot.rarity === "legendary") return "🦸";
+      if(robot.rarity === "epic") return "🏝️";
+      if(robot.rarity === "rare") return "⚡";
+      return "💻";
+    }
+
+
+    function rarityPullMessage(robot){
+      if(robot.rarity === "legendary") return "LEGENDARY REMOTE POWER!";
+      if(robot.rarity === "epic") return "EPIC WORKFLOW!";
+      return "";
+    }
+
+
+    function removeLegendaryOverlay(){
+      document.querySelectorAll(".legendary-overlay,.legendary-animation,.rarity-overlay").forEach(el=>{
+        el.style.pointerEvents = "none";
+        setTimeout(()=>{
+          if(el && el.parentNode) el.parentNode.removeChild(el);
+        }, 250);
+      });
+    }
+
+    function showToast(message){
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+
+      clearTimeout(window.toastTimeout);
+
+      window.toastTimeout = setTimeout(()=>{
+        toast.classList.remove("show");
+      }, 1800);
+    }
+
+    function showPullEffect(robot){
+      if(!["epic", "legendary"].includes(robot.rarity)) return;
+
+      const overlay = document.getElementById("pullEffect");
+      const box = document.getElementById("effectBox");
+      const small = document.getElementById("effectSmall");
+      if(!overlay || !box || !small) return;
+
+      overlay.className = `pull-effect show effect-${robot.rarity}`;
+
+      if(robot.rarity === "epic"){
+        box.childNodes[0].textContent = "EPIC WORKFLOW!";
+      }
+
+      if(robot.rarity === "legendary"){
+        box.childNodes[0].textContent = "LEGENDARY REMOTE POWER!";
+      }
+
+      small.textContent = `#${robot.number} ${robot.name}`;
+
+      clearTimeout(window.pullEffectTimeout);
+
+      window.pullEffectTimeout = setTimeout(()=>{
+        overlay.className = "pull-effect";
+      }, robot.rarity === "legendary" ? 1450 : 1050);
+    }
+
+    function rand(min,max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    function randomCardNumber(){
+      const chances = adjustedPackChances(selectedPack);
+      const r = Math.random() * 100;
+      let cursor = 0;
+
+      cursor += chances.common;
+      if(r < cursor) return rand(1,16);
+
+      cursor += chances.uncommon;
+      if(r < cursor) return rand(1,16);
+
+      cursor += chances.rare;
+      if(r < cursor) return rand(17,26);
+
+      cursor += chances.epic;
+      if(r < cursor) return rand(27,29);
+
+      return 30;
+    }
+
+    function save(){
+      localStorage.setItem("playerName", playerName);
+      localStorage.setItem("coins", coins);
+      localStorage.setItem("collection", JSON.stringify(collection));
+      localStorage.setItem("claimed", JSON.stringify(claimed));
+      localStorage.setItem("lastCoinClaim", lastCoinClaim);
+      localStorage.setItem("runStartTime", runStartTime);
+      localStorage.setItem("completionTime", completionTime);
+      localStorage.setItem("badLuckTier", badLuckTier);
+      localStorage.setItem("tierTimes", JSON.stringify(tierTimes));
+    }
+
+    function formatTime(ms){
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const s = String(totalSeconds % 60).padStart(2, "0");
+      return `${h}:${m}:${s}`;
+    }
+
+
+    function badLuckMultiplier(){
+      return Math.max(0, 1 - badLuckTier * 0.05);
+    }
+
+    function adjustedPackChances(type){
+      const base = packTypes[type].chances;
+      const multiplier = badLuckMultiplier();
+      const rare = (base.rare || 0) * multiplier;
+      const epic = (base.epic || 0) * multiplier;
+      const legendary = (base.legendary || 0) * multiplier;
+      const uncommon = (base.uncommon || 0) * multiplier;
+      const common = Math.max(0, 100 - rare - epic - legendary - uncommon);
+      return { common, uncommon, rare, epic, legendary };
+    }
+
+    function fmtPercent(value){
+      const rounded = Math.round(value * 10) / 10;
+      return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    }
+
+    function updatePackChanceLabels(){
+      const map = {
+        basic: document.querySelector("#basicPackVisual .pack-chance"),
+        advanced: document.querySelector("#advancedPackVisual .pack-chance"),
+        elite: document.querySelector("#elitePackVisual .pack-chance")
+      };
+
+      Object.entries(map).forEach(([type, el])=>{
+        if(!el) return;
+        const c = adjustedPackChances(type);
+        const rows = [];
+        if(c.common > 0) rows.push(`<span>${fmtPercent(c.common)}% COMMON</span>`);
+        if(c.rare > 0) rows.push(`<span>${fmtPercent(c.rare)}% RARE</span>`);
+        if(c.epic > 0) rows.push(`<span>${fmtPercent(c.epic)}% EPIC</span>`);
+        if(c.legendary > 0) rows.push(`<span>${fmtPercent(c.legendary)}% LEGENDARY</span>`);
+        el.innerHTML = rows.join("");
+      });
+    }
+
+    function updateBadLuckUI(){
+      const panel = document.getElementById("badLuckPanel");
+      if(panel) panel.textContent = `T${badLuckTier}: ${badLuckTier * 5}% Bad Luck Affix`;
+      updatePackChanceLabels();
+    }
+
+    function showCongratulations(){
+      const overlay = document.getElementById("congratsOverlay");
+      const text = document.getElementById("congratsText");
+      const tierText = document.getElementById("congratsTierText");
+      const nextTier = badLuckTier + 1;
+      if(text) text.textContent = "You collected all 30 cards. Start a new run and prove you can beat the office grind again.";
+      if(tierText) tierText.textContent = `Next run: T${nextTier} · ${nextTier * 5}% Bad Luck Affix`;
+      if(overlay) overlay.classList.add("show");
+    }
+
+    function startNextRun(){
+      badLuckTier += 1;
+      collection = {};
+      claimed = {};
+      completionTime = 0;
+      pendingPull = [];
+      coins = 1500;
+      lastCoinClaim = 0;
+      runStartTime = Date.now();
+      localStorage.setItem("runStartTime", runStartTime);
+
+      const overlay = document.getElementById("congratsOverlay");
+      if(overlay) overlay.classList.remove("show");
+
+      save();
+      showMain();
+      updateCoins();
+      updateCooldownUI();
+      updateRunTimer();
+      updateBadLuckUI();
+      showToast(`New run started: T${badLuckTier} · ${badLuckTier * 5}% Bad Luck Affix · 1500 Coins`);
+    }
+
+
+    function updateTierTimeHistory(){
+      const history = document.getElementById("tierTimeHistory");
+      if(!history) return;
+
+      const elapsed = completionTime ? completionTime - runStartTime : Date.now() - runStartTime;
+      history.classList.add("show");
+      history.innerHTML = `<div class="current-time-line">Current Time needed for T${badLuckTier}: ${formatTime(elapsed)}</div>`;
+    }
+
+    function updateRunTimer(){
+      const timer = document.getElementById("timerPanel");
+      if(!timer) return;
+
+      if(!runStartTime || Number.isNaN(runStartTime)){
+        runStartTime = Date.now();
+        localStorage.setItem("runStartTime", runStartTime);
+      }
+
+      const records = tierTimes && tierTimes.length
+        ? tierTimes
+            .map((ms, index)=>{
+              const colorClass = index % 2 === 0 ? "tier-blue" : "tier-purple";
+              return `<div class="${colorClass}">T${index}: ${formatTime(ms)}</div>`;
+            })
+            .join("")
+        : `<div class="empty-record">No completed T records yet</div>`;
+
+      timer.innerHTML = `
+        <div class="time-record-title">⏱ Time Records</div>
+        <div class="time-record-lines">${records}</div>
+      `;
+
+      updateTierTimeHistory();
+    }
+
+    function checkCompletionTime(){
+      if(completionTime) return;
+
+      for(let i = 1; i <= 30; i++){
+        if(!collection[i]) return;
+      }
+
+      completionTime = Date.now();
+      tierTimes[badLuckTier] = completionTime - runStartTime;
+      save();
+      showCongratulations();
+      showToast(`T${badLuckTier} complete! Time: ${formatTime(tierTimes[badLuckTier])}`);
+      updateRunTimer();
+    }
+
+    function ownedCount(){
+      let total = 0;
+
+      for(let i = 1; i <= 30; i++){
+        if(collection[i]) total++;
+      }
+
+      return total;
+    }
+
+    function updateCollectedPanel(){
+      let total = 0;
+
+      let common = 0;
+      let rare = 0;
+      let epic = 0;
+      let legendary = 0;
+
+      robots.forEach(robot=>{
+        if(collection[robot.number]){
+          total++;
+
+          if(robot.rarity === "common") common++;
+          else if(robot.rarity === "rare") rare++;
+          else if(robot.rarity === "epic") epic++;
+          else if(robot.rarity === "legendary") legendary++;
+        }
+      });
+
+      const commonDone = common >= 16 ? " ✅" : "";
+      const rareDone = rare >= 10 ? " ✅" : "";
+      const epicDone = epic >= 3 ? " ✅" : "";
+      const legendaryDone = legendary >= 1 ? " ✅" : "";
+
+      const panel = document.getElementById("collectedPanel");
+
+      panel.innerHTML = `
+        <div class="collection-total">✅ ${total}/30 Cards</div>
+
+        <div class="collection-rarity-lines">
+          <div class="common">${common}/16 Common${commonDone}</div>
+          <div class="rare">${rare}/10 Rare${rareDone}</div>
+          <div class="epic">${epic}/3 Epic${epicDone}</div>
+          <div class="legendary">${legendary}/1 Legendary${legendaryDone}</div>
+        </div>
+      `;
+    }
+
+    function selectPack(type){
+      selectedPack = type;
+      updatePackUI();
+      updateCoins();
+    }
+
+    function updatePackUI(){
+      // Pack visuals are directly clickable; no separate selector buttons needed.
+    }
+
+    function updateCoins(){
+      document.getElementById("coins").textContent = `🪙 ${coins}`;
+      const packTitleCoins = document.getElementById("packTitleCoins");
+      if(packTitleCoins) packTitleCoins.textContent = `🪙 ${coins}`;
+
+      const hasPending = pendingPull.length > 0;
+
+      const visualMap = {
+        basic: document.getElementById("basicPackVisual"),
+        advanced: document.getElementById("advancedPackVisual"),
+        elite: document.getElementById("elitePackVisual")
+      };
+
+      Object.entries(packTypes).forEach(([key, pack])=>{
+        const visual = visualMap[key];
+        if(!visual) return;
+
+        if(coins < pack.price || hasPending){
+          visual.classList.add("disabled");
+        } else {
+          visual.classList.remove("disabled");
+        }
+      });
+
+      const playBtn = document.getElementById("playMiniBtn");
+      const albumBtn = document.getElementById("albumBtn");
+      const resetBtn = document.getElementById("resetBtn");
+
+      [playBtn, albumBtn, resetBtn].forEach(btn=>{
+        if(!btn) return;
+        if(hasPending) btn.classList.add("locked-while-pending");
+        else btn.classList.remove("locked-while-pending");
+      });
+
+      updateCollectedPanel();
+      updateBulkScrapButton();
+    }
+
+    function showCorrectScreen(){
+      if(playerName){
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("gameScreen").classList.remove("hidden");
+        document.getElementById("playerName").textContent = `User: ${playerName}`;
+        updateCoins();
+      } else {
+        document.getElementById("loginScreen").classList.remove("hidden");
+        document.getElementById("gameScreen").classList.add("hidden");
+      }
+    }
+
+    function artHtml(robot){
+      const fallback = `<span class="fallback-icon">${getFallbackIcon(robot)}</span>`;
+      if(!robot.image) return fallback;
+      return `<img src="${robot.image}?v=40" alt="${robot.name}" onerror="this.parentElement.innerHTML='<span class=&quot;fallback-icon&quot;>${getFallbackIcon(robot)}</span>'">`;
+    }
+
+    function makeCard(robot){
+      const div = document.createElement("div");
+
+      if(robot.image){
+        div.className = `card has-image ${robot.rarity}`;
+        div.innerHTML = `<img class="full-card-img" src="${robot.image}?v=40" alt="${robot.name}" onerror="this.parentElement.classList.remove('has-image'); this.parentElement.innerHTML='<div class=&quot;card-num&quot;>#${robot.number}</div><div class=&quot;art&quot;><span class=&quot;fallback-icon&quot;>${getFallbackIcon(robot)}</span></div><div><div class=&quot;card-name&quot;>${robot.name}</div><div class=&quot;rarity&quot;>${robot.rarity}</div></div>'">`;
+        return div;
+      }
+
+      div.className = `card ${robot.rarity}`;
+      div.innerHTML = `
+        <div class="card-num">#${robot.number}</div>
+        <div class="art">${artHtml(robot)}</div>
+        <div>
+          <div class="card-name">${robot.name}</div>
+          <div class="rarity">${robot.rarity}</div>
+        </div>
+      `;
+      return div;
+    }
+
+    function makePackRevealCard(robot, delay){
+      const div = document.createElement("div");
+      div.className = `pack-reveal-card ${robot.rarity} ${robot.image ? "has-image" : ""}`;
+      div.style.animationDelay = `${delay}ms`;
+
+      if(robot.image){
+        div.innerHTML = `<img src="${robot.image}?v=40" alt="${robot.name}" onerror="this.parentElement.classList.remove('has-image'); this.parentElement.innerHTML='<div class=&quot;mini-card-art&quot;><span class=&quot;fallback-icon&quot;>${getFallbackIcon(robot)}</span></div><div><div class=&quot;mini-card-name&quot;>${robot.name}</div><div class=&quot;mini-card-rarity&quot;>${robot.rarity}</div></div>'"><div class="pack-reveal-name">${robot.name}</div>`;
+      } else {
+        div.innerHTML = `
+          <div class="card-num">#${robot.number}</div>
+          <div class="mini-card-art"><span class="fallback-icon">${getFallbackIcon(robot)}</span></div>
+          <div>
+            <div class="mini-card-name">${robot.name}</div>
+            <div class="mini-card-rarity">${robot.rarity}</div>
+          </div>
+        `;
+      }
+
+      return div;
+    }
+
+    function openPack(type){
+      if(pendingPull.length > 0) {
+        showToast("Move remote cards to collection first");
+        return;
+      }
+
+      selectedPack = type || selectedPack;
+      updatePackUI();
+
+      const clickedPack = document.getElementById(`${selectedPack}PackVisual`);
+      if(clickedPack && clickedPack.classList.contains("disabled")) {
+        showToast("Not enough coins");
+        return;
+      }
+
+      const pack = packTypes[selectedPack];
+
+      if(coins < pack.price) {
+        showToast("Not enough coins");
+        return;
+      }
+
+      coins -= pack.price;
+
+      const packArea = document.getElementById("packArea");
+      const packContent = document.getElementById("packContent");
+      const packCards = document.getElementById("packCards");
+
+      packCards.innerHTML = "";
+      packCards.classList.add("hidden");
+      packArea.classList.remove("revealed");
+      packContent.classList.remove("hidden");
+      const stageTitle = document.getElementById("stageTitle");
+      if(stageTitle) stageTitle.innerHTML = '<span></span>OPENING REMOTE PACK<span></span><div class="pack-title-coins" id="packTitleCoins">🪙 ' + coins + '</div>';
+      document.getElementById("moveCardsBtn").classList.add("hidden");
+
+      const pulled = [];
+
+      for(let i = 0; i < 3; i++){
+        const num = randomCardNumber();
+        pulled.push(robots[num - 1]);
+      }
+
+      pendingPull = pulled;
+
+      packArea.classList.remove("opening");
+      void packArea.offsetWidth;
+      packArea.classList.add("opening");
+
+      updateCoins();
+
+      setTimeout(()=>{
+        packContent.classList.add("hidden");
+        packArea.classList.remove("opening");
+        packArea.classList.add("revealed");
+        packCards.classList.remove("hidden");
+
+        pulled.forEach((robot,index)=>{
+          packCards.appendChild(makePackRevealCard(robot, index * 260));
+        });
+
+        document.getElementById("moveCardsBtn").classList.remove("hidden");
+      }, 720);
+
+      const rarityRank = { common:1, uncommon:2, rare:3, epic:4, legendary:5 };
+      const bestPull = pulled.reduce((best, robot)=> rarityRank[robot.rarity] > rarityRank[best.rarity] ? robot : best, pulled[0]);
+
+      setTimeout(()=>showPullEffect(bestPull), 1250);
+
+      save();
+      updateCoins();
+    }
+
+    function moveCardsToAlbum(){
+      if(pendingPull.length === 0) return;
+
+      pendingPull.forEach(robot=>{
+        collection[robot.number] = (collection[robot.number] || 0) + 1;
+      });
+
+      pendingPull = [];
+
+      const packArea = document.getElementById("packArea");
+      const packContent = document.getElementById("packContent");
+      const packCards = document.getElementById("packCards");
+
+      packCards.innerHTML = "";
+      packCards.classList.add("hidden");
+      packArea.classList.remove("revealed", "opening");
+      packContent.classList.remove("hidden");
+      const stageTitle = document.getElementById("stageTitle");
+      if(stageTitle) stageTitle.innerHTML = '<span></span>OPEN A REMOTE WORK PACK<span></span><div class="pack-title-coins" id="packTitleCoins">🪙 ' + coins + '</div>';
+      document.getElementById("moveCardsBtn").classList.add("hidden");
+
+      checkBonuses();
+      checkCompletionTime();
+      save();
+      updateCoins();
+      showToast("Remote cards moved to collection");
+    }
+
+    function updateCooldownUI(){
+      const btn = document.getElementById("playMiniBtn");
+      const text = document.getElementById("cooldownText");
+      const remaining = COIN_COOLDOWN_MS - (Date.now() - lastCoinClaim);
+
+      if(!btn) return;
+
+      if(remaining > 0){
+        const seconds = Math.ceil(remaining / 1000);
+        btn.disabled = true;
+        btn.textContent = `FAKE PRODUCTIVITY (${seconds}s)`;
+        if(text) text.textContent = `Trainingsmission lädt noch ${seconds}s.`;
+      } else {
+        btn.disabled = false;
+        btn.textContent = "FAKE PRODUCTIVITY (+250)";
+        if(text) text.textContent = "";
+      }
+    }
+
+    function playMiniGame(){
+      const remaining = COIN_COOLDOWN_MS - (Date.now() - lastCoinClaim);
+      if(remaining > 0){
+        updateCooldownUI();
+        return;
+      }
+
+      coins += 250;
+      lastCoinClaim = Date.now();
+      save();
+      updateCoins();
+      updateCooldownUI();
+      showToast("+250 Coins für Fake Productivity!");
+    }
+
+
+    function totalCompletedTimeForLeaderboard(){
+      if(!tierTimes || tierTimes.length === 0) return 0;
+      return tierTimes.reduce((sum, ms)=>sum + (Number(ms) || 0), 0);
+    }
+
+    function getLocalLeaderboardEntry(){
+      return {
+        username: playerName || "Anonymous",
+        maxTier: Math.max(0, badLuckTier - (completionTime ? 0 : 0)),
+        completedTiers: tierTimes ? tierTimes.length : 0,
+        totalTime: totalCompletedTimeForLeaderboard(),
+        isMe: true
+      };
+    }
+
+    function demoLeaderboardRows(){
+      const me = getLocalLeaderboardEntry();
+
+      const demo = [
+        { username:"CoffeeNinja", completedTiers:7, totalTime: 1000 * 60 * 60 * 7 + 1000 * 60 * 12 },
+        { username:"SpreadsheetLord", completedTiers:5, totalTime: 1000 * 60 * 60 * 6 + 1000 * 60 * 31 },
+        { username:"MuteButtonHero", completedTiers:4, totalTime: 1000 * 60 * 60 * 4 + 1000 * 60 * 58 },
+        { username:"SnackDrawerPro", completedTiers:3, totalTime: 1000 * 60 * 60 * 3 + 1000 * 60 * 44 },
+        { username:"VPNWizard", completedTiers:2, totalTime: 1000 * 60 * 60 * 2 + 1000 * 60 * 19 }
+      ];
+
+      const rows = [...demo, me]
+        .filter(row=>row.completedTiers > 0 || row.isMe)
+        .sort((a,b)=>{
+          if(b.completedTiers !== a.completedTiers) return b.completedTiers - a.completedTiers;
+          return a.totalTime - b.totalTime;
+        })
+        .map((row,index)=>({...row, rank:index + 1}));
+
+      return rows;
+    }
+
+    function renderLeaderboard(){
+      const list = document.getElementById("leaderboardList");
+      const myRank = document.getElementById("myRankCard");
+      if(!list || !myRank) return;
+
+      const rows = demoLeaderboardRows();
+      const me = rows.find(row=>row.isMe);
+
+      myRank.textContent = me
+        ? `Your Position: #${me.rank} · T${Math.max(0, me.completedTiers - 1)} · ${formatTime(me.totalTime)} total`
+        : "Your Position: —";
+
+      const top10 = rows.slice(0,10);
+
+      if(top10.length === 0){
+        list.innerHTML = `<div class="leaderboard-empty">Noch keine Einträge vorhanden.</div>`;
+        return;
+      }
+
+      list.innerHTML = top10.map(row=>`
+        <div class="leaderboard-row ${row.isMe ? "me" : ""}">
+          <div class="leaderboard-rank">#${row.rank}</div>
+          <div class="leaderboard-name">${row.username}</div>
+          <div class="leaderboard-score">
+            <div>T${Math.max(0, row.completedTiers - 1)}</div>
+            <div>${formatTime(row.totalTime)}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function showLeaderboard(){
+      document.getElementById("mainScreen").classList.add("hidden");
+      document.getElementById("albumScreen").classList.add("hidden");
+      document.getElementById("leaderboardScreen").classList.remove("hidden");
+      document.getElementById("topBackArrow").style.display = "flex";
+      renderLeaderboard();
+    }
+
+    function showAlbum(){
+      document.getElementById("mainScreen").classList.add("hidden");
+      document.getElementById("albumScreen").classList.remove("hidden");
+      document.getElementById("topBackArrow").style.display = "flex";
+      renderAlbum();
+    }
+
+    function showMain(){
+      document.getElementById("albumScreen").classList.add("hidden");
+      const leaderboardScreen = document.getElementById("leaderboardScreen");
+      if(leaderboardScreen) leaderboardScreen.classList.add("hidden");
+      document.getElementById("mainScreen").classList.remove("hidden");
+      document.getElementById("topBackArrow").style.display = "none";
+    }
+
+    function renderAlbum(){
+      const grid = document.getElementById("albumGrid");
+      grid.innerHTML = "";
+      let owned = 0;
+
+      robots.forEach(robot=>{
+        const count = collection[robot.number] || 0;
+        if(count > 0) owned++;
+
+        const slot = document.createElement("div");
+        slot.className = `slot ${count ? "owned" : ""} ${count ? robot.rarity : ""}`;
+
+        slot.innerHTML = count
+          ? `<div class="owned-check">✓</div><div class="miniart">${artHtml(robot)}</div><div class="slot-number">#${robot.number}</div><div class="slot-title">${robot.name}</div><div class="slot-rarity ${robot.rarity}">${robot.rarity}</div>${count > 1 ? `<span class="dup">x${count}</span>` : ""}`
+          : `<div class="miniart"><span class="fallback-icon">?</span></div><div class="slot-number">#${robot.number}</div><div class="slot-title">???</div><div class="slot-rarity ${robot.rarity}">${robot.rarity}</div>`;
+
+        grid.appendChild(slot);
+      });
+
+      document.getElementById("progressText").textContent = `${owned}/30 gesammelt`;
+      updateSetBoxes();
+      updateBulkScrapButton();
+      updateCollectedPanel();
+    }
+
+    function hasRange(start,end){
+      for(let i = start; i <= end; i++) if(!collection[i]) return false;
+      return true;
+    }
+
+    function scrapValue(robot){
+      if(robot.rarity === "common") return 12;
+      if(robot.rarity === "uncommon") return 25;
+      if(robot.rarity === "rare") return 50;
+      if(robot.rarity === "epic") return 125;
+      if(robot.rarity === "legendary") return 350;
+      return 12;
+    }
+
+    function scrapDuplicate(number){
+      const count = collection[number] || 0;
+      if(count <= 1) return alert("Du kannst nur doppelte Karten verschrotten.");
+      const robot = robots[number - 1];
+      const value = scrapValue(robot);
+
+      collection[number] -= 1;
+      coins += value;
+      save();
+      updateCoins();
+      renderAlbum();
+      showToast(`${robot.name} verschrottet (+${value} Coins)`);
+    }
+
+
+    function totalScrapValue(){
+      let total = 0;
+
+      robots.forEach(robot=>{
+        const count = collection[robot.number] || 0;
+
+        if(count > 1){
+          total += (count - 1) * scrapValue(robot);
+        }
+      });
+
+      return total;
+    }
+
+
+    function updateBulkScrapMainButton(){
+      const total = totalScrapValue();
+      const btn = document.getElementById("bulkScrapMainBtn");
+      const value = document.getElementById("bulkScrapMainValue");
+      if(!btn) return;
+      if(value) value.textContent = `+${total} COINS`;
+      else btn.innerHTML = `♻ SCRAP ALL DUPLICATES<br><span id="bulkScrapMainValue">+${total} COINS</span>`;
+      btn.disabled = total <= 0;
+      btn.style.opacity = total <= 0 ? ".55" : "1";
+    }
+
+    function updateBulkScrapButton(){
+      const total = totalScrapValue();
+      const btn = document.getElementById("bulkScrapBtn");
+
+      if(!btn) return;
+
+      btn.textContent = `Alle überschüssigen Karten verschrotten (+${total} Coins)`;
+      btn.disabled = total <= 0;
+      btn.style.opacity = total <= 0 ? ".5" : "1";
+    }
+
+    function scrapAllDuplicates(){
+      let total = 0;
+
+      robots.forEach(robot=>{
+        const count = collection[robot.number] || 0;
+
+        if(count > 1){
+          const extra = count - 1;
+          total += extra * scrapValue(robot);
+          collection[robot.number] = 1;
+        }
+      });
+
+      if(total <= 0){
+        showToast("Keine doppelten Karten vorhanden");
+        return;
+      }
+
+      coins += total;
+
+      save();
+      updateCoins();
+      updateBulkScrapButton();
+      if(!document.getElementById("albumScreen").classList.contains("hidden")){
+        renderAlbum();
+      }
+
+      showToast(`Alle Duplikate verschrottet (+${total} Coins)`);
+    }
+
+    function checkBonuses(){
+      if(hasRange(1,10) && !claimed["1-10"]){
+        coins += 500; claimed["1-10"] = true;
+        alert("Set 1–10 komplett! +500 Coins und Avatar Stufe 1!");
+      }
+      if(hasRange(11,20) && !claimed["11-20"]){
+        coins += 1000; claimed["11-20"] = true;
+        alert("Set 11–20 komplett! +1000 Coins und Avatar Stufe 2!");
+      }
+      if(hasRange(21,30) && !claimed["21-30"]){
+        coins += 2500; claimed["21-30"] = true;
+        alert("Set 21–30 komplett! +2500 Coins und Avatar Stufe 3!");
+      }
+    }
+
+    function updateSetBoxes(){
+      const reward1 = "+500 Coins";
+      const reward2 = "+1000 Coins";
+      const reward3 = "+2500 Coins";
+
+      document.getElementById("set1").innerHTML = `Collect all Common Cards<br>Reward: ${reward1} · ${claimed["all-common"] ? "✅ claimed" : hasRarity("common") ? "ready" : "open"}`;
+      document.getElementById("set2").innerHTML = `Collect all Rare Cards<br>Reward: ${reward2} · ${claimed["all-rare"] ? "✅ claimed" : hasRarity("rare") ? "ready" : "open"}`;
+      document.getElementById("set3").innerHTML = `Collect all Epic Cards<br>Reward: ${reward3} · ${claimed["all-epic"] ? "✅ claimed" : hasRarity("epic") ? "ready" : "open"}`;
+    }
+
+    document.getElementById("startBtn").addEventListener("click",()=>{
+      const n = document.getElementById("nameInput").value.trim();
+      if(!n) return alert("Bitte Spielernamen eingeben.");
+      playerName = n;
+      save();
+      showCorrectScreen();
+    updatePackUI();
+    updateCooldownUI();
+    updateRunTimer();
+    updateCollectedPanel();
+    updateBadLuckUI();
+    setInterval(updateCooldownUI, 500);
+    setInterval(updateRunTimer, 500);
+    });
+    document.getElementById("moveCardsBtn").addEventListener("click", moveCardsToAlbum);
+    document.getElementById("playMiniBtn").addEventListener("click", playMiniGame);
+    document.getElementById("albumBtn").addEventListener("click", showAlbum);
+    document.getElementById("leaderboardBtn").addEventListener("click", showLeaderboard);
+    document.getElementById("leaderboardBackBtn").addEventListener("click", showMain);
+    document.getElementById("backBtn").addEventListener("click", showMain);
+    document.getElementById("topBackArrow").addEventListener("click", showMain);
+    const albumBulkScrapBtn = document.getElementById("bulkScrapBtn");
+    if(albumBulkScrapBtn) albumBulkScrapBtn.addEventListener("click", scrapAllDuplicates);
+    const bulkScrapMainBtn = document.getElementById("bulkScrapMainBtn");
+    if(bulkScrapMainBtn) bulkScrapMainBtn.addEventListener("click", scrapAllDuplicates);
+    document.getElementById("bulkScrapMainBtn").addEventListener("click", scrapAllDuplicates);
+    document.getElementById("newRunBtn").addEventListener("click", startNextRun);
+    document.getElementById("resetBtn").addEventListener("click",()=>{
+      if(confirm("Profil wirklich löschen?")){
+        localStorage.clear();
+        location.reload();
+      }
+    });
+
+    showCorrectScreen();
+    updatePackUI();
+    updateCooldownUI();
+    updateRunTimer();
+    updateCollectedPanel();
+    updateBadLuckUI();
+    setInterval(updateCooldownUI, 500);
+    updateBulkScrapMainButton();
+    setInterval(updateRunTimer, 500);
+  </script>
+</body>
+</html>
+
+<style>
+/* v44 fine tuning */
+
+.showcase-pack .pack-chance{
+  bottom:-10px !important;
+}
+
+.showcase-pack .booster-price{
+  bottom:-102px !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack .pack-chance{
+    bottom:-12px !important;
+  }
+
+  .showcase-pack .booster-price{
+    bottom:-90px !important;
+  }
+
+}
+</style>
+
+
+<style>
+/* v45 lower coin price bars further below odds */
+
+.showcase-pack .booster-price{
+  bottom:-138px !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack .booster-price{
+    bottom:-118px !important;
+  }
+
+}
+</style>
+
+
+<style>
+/* v46 fix pack price overlap */
+
+.showcase-pack{
+  height: 360px !important;
+}
+
+.showcase-pack .pack-chance{
+  bottom:-8px !important;
+}
+
+.showcase-pack .booster-price{
+  bottom:-168px !important;
+  width: 112px !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before{
+  inset:0 0 170px 0 !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack{
+    height:300px !important;
+  }
+
+  .showcase-pack .pack-chance{
+    bottom:-10px !important;
+  }
+
+  .showcase-pack .booster-price{
+    bottom:-142px !important;
+    width:84px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before{
+    inset:0 0 150px 0 !important;
+  }
+
+}
+</style>
+
+
+<style>
+/* v47 move coin price bars clearly below odds */
+
+.showcase-pack .booster-price{
+  bottom:-235px !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack .booster-price{
+    bottom:-195px !important;
+  }
+
+}
+</style>
+
+
+<style>
+/* v48 separate pack price bars from artwork */
+
+.showcase-pack{
+  height: 430px !important;
+  overflow: visible !important;
+}
+
+.showcase-pack .booster-price{
+  bottom:-320px !important;
+  position:absolute !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before{
+  inset:0 0 220px 0 !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack{
+    height:360px !important;
+  }
+
+  .showcase-pack .booster-price{
+    bottom:-270px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before{
+    inset:0 0 195px 0 !important;
+  }
+
+}
+</style>
+
+
+<style>
+/* v49 move odds info blocks lower */
+
+.showcase-pack .pack-chance{
+  bottom:-92px !important;
+}
+
+.showcase-pack .booster-price{
+  bottom:-355px !important;
+}
+
+.showcase-pack{
+  height:470px !important;
+}
+
+#basicPackVisual::before,
+#advancedPackVisual::before,
+#elitePackVisual::before{
+  inset:0 0 255px 0 !important;
+}
+
+@media (max-width:700px){
+
+  .showcase-pack .pack-chance{
+    bottom:-76px !important;
+  }
+
+  .showcase-pack .booster-price{
+    bottom:-305px !important;
+  }
+
+  .showcase-pack{
+    height:390px !important;
+  }
+
+  #basicPackVisual::before,
+  #advancedPackVisual::before,
+  #elitePackVisual::before{
+    inset:0 0 225px 0 !important;
+  }
+
+}
+</style>
+
+<style>
+.tier-time-history div{
+  color:inherit !important;
+  background:none !important;
+  box-shadow:none !important;
+  animation:none !important;
+}
+
+.collection-rarity-lines .legendary::before,
+.collection-rarity-lines .legendary::after{
+  content:none !important;
+  display:none !important;
+}
+</style>
