@@ -2440,7 +2440,7 @@
 /* v51:
    - fixed pull ranges so cards 11-18 can be drawn
    - balanced duplicate scrap rewards
-   - start coins 1500
+   - start coins 800
    - Fake Productivity gives +250
 */
 
@@ -4103,7 +4103,7 @@ using (true);
         </div>
         <div class="profile">
           <div id="playerName">Pilot</div>
-          <div class="coins" id="coins">🪙 1500</div>
+          <div class="coins" id="coins">🪙 800</div>
         </div>
       </div>
 
@@ -4416,7 +4416,7 @@ using (true);
     }
 
     let playerName = localStorage.getItem("playerName") || "";
-    let coins = Number(localStorage.getItem("coins")) || 1500;
+    let coins = Number(localStorage.getItem("coins")) || 800;
     let collection = JSON.parse(localStorage.getItem("collection") || "{}");
     let claimed = JSON.parse(localStorage.getItem("claimed") || "{}");
     let lastCoinClaim = Number(localStorage.getItem("lastCoinClaim")) || 0;
@@ -4698,7 +4698,7 @@ using (true);
       claimed = {};
       completionTime = 0;
       pendingPull = [];
-      coins = 1500;
+      coins = 800;
       lastCoinClaim = 0;
       runStartTime = Date.now();
       localStorage.setItem("runStartTime", runStartTime);
@@ -4713,7 +4713,7 @@ using (true);
       updateSpeedBoostButton();
       updateRunTimer();
       updateBadLuckUI();
-      showToast(`New run started: T${badLuckTier} · ${badLuckTier * 5}% Bad Luck Affix · 1500 Coins`);
+      showToast(`New run started: T${badLuckTier} · ${badLuckTier * 5}% Bad Luck Affix · 800 Coins`);
     }
 
 
