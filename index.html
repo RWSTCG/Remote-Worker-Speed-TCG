@@ -3212,6 +3212,26 @@ body{
   box-shadow: 0 0 22px rgba(34,197,94,.18) !important;
 }
 
+
+/* v69 pack wobble + global username uniqueness */
+
+.showcase-pack.opening {
+  animation: activePackShake .42s ease-in-out infinite !important;
+}
+
+.showcase-pack:not(.opening) {
+  animation-play-state: paused !important;
+}
+
+@keyframes activePackShake {
+  0% { transform: translateX(0) rotate(0deg) scale(.92); }
+  20% { transform: translateX(-2px) rotate(-1deg) scale(.92); }
+  40% { transform: translateX(2px) rotate(1deg) scale(.92); }
+  60% { transform: translateX(-2px) rotate(-1deg) scale(.92); }
+  80% { transform: translateX(2px) rotate(1deg) scale(.92); }
+  100% { transform: translateX(0) rotate(0deg) scale(.92); }
+}
+
 </style>
 <!--
 Supabase SQL needed:
@@ -3997,6 +4017,7 @@ using (true);
       packCards.innerHTML = "";
       packCards.classList.add("hidden");
       packArea.classList.remove("revealed", "opening");
+      document.querySelectorAll(".showcase-pack").forEach(el=>el.classList.remove("opening"));
       packContent.classList.remove("hidden");
       const stageTitle = document.getElementById("stageTitle");
       if(stageTitle) stageTitle.innerHTML = '<span></span>OPEN A REMOTE WORK PACK<span></span><div class="pack-title-coins" id="packTitleCoins">🪙 ' + coins + '</div>';
@@ -4062,6 +4083,28 @@ using (true);
         "Prefer": "return=representation",
         ...extra
       };
+    }
+
+
+    async function usernameExistsGlobally(username){
+      if(!username) return false;
+
+      try{
+        const url = `${SUPABASE_REST_URL}/${LEADERBOARD_TABLE}?select=username&username=eq.${encodeURIComponent(username)}&limit=1`;
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: leaderboardHeaders()
+        });
+
+        if(!response.ok) return false;
+
+        const rows = await response.json();
+        return rows.length > 0;
+      }catch(error){
+        console.warn("Username check failed", error);
+        return false;
+      }
     }
 
     async function fetchLeaderboardRows(){
@@ -4427,20 +4470,29 @@ using (true);
       });
     }
 
-    document.getElementById("startBtn").addEventListener("click",()=>{
-      const n = document.getElementById("nameInput").value.trim();
-      if(!n) return alert("Bitte Spielernamen eingeben.");
-      playerName = n;
-      save();
-      migrateAchievementKeys();
-    showCorrectScreen();
-    updatePackUI();
-    updateCooldownUI();
-    updateRunTimer();
-    updateCollectedPanel();
-    updateBadLuckUI();
-    setInterval(updateCooldownUI, 500);
-    setInterval(updateRunTimer, 500);
+    document.getElementById("startBtn").addEventListener("click", async () => {
+      const input = document.getElementById("nameInput");
+      const value = input.value.trim();
+
+      if(!value){
+        showToast("Please enter a username");
+        return;
+      }
+
+      const currentStored = localStorage.getItem("playerName");
+
+      if(currentStored !== value){
+        const exists = await usernameExistsGlobally(value);
+
+        if(exists){
+          showToast("Username already taken globally");
+          return;
+        }
+      }
+
+      playerName = value;
+      localStorage.setItem("playerName", playerName);
+      showCorrectScreen();
     });
     document.getElementById("moveCardsBtn").addEventListener("click", moveCardsToAlbum);
     document.getElementById("playMiniBtn").addEventListener("click", playMiniGame);
