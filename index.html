@@ -3783,6 +3783,171 @@ body{
   }
 }
 
+
+
+/* v77 animated Fake Productivity cooldown fill */
+#mainScreen .fake-productivity-row #playMiniBtn{
+  position:relative !important;
+  isolation:isolate !important;
+  overflow:hidden !important;
+  background:linear-gradient(135deg,#38bdf8,#2563eb) !important;
+  border:2px solid rgba(255,255,255,.16) !important;
+  color:white !important;
+  text-shadow:0 1px 8px rgba(0,0,0,.45) !important;
+  box-shadow:0 10px 32px rgba(37,99,235,.35), inset 0 0 18px rgba(255,255,255,.10) !important;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:var(--cooldown-progress, 0%);
+  border-radius:inherit;
+  background:linear-gradient(90deg,#22c55e 0%,#84cc16 45%,#facc15 100%);
+  box-shadow:0 0 28px rgba(34,197,94,.40), inset 0 0 20px rgba(255,255,255,.16);
+  opacity:0;
+  z-index:-1;
+  transition:width .45s linear, opacity .18s ease;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(115deg, transparent 0%, transparent 42%, rgba(255,255,255,.20) 50%, transparent 58%, transparent 100%);
+  transform:translateX(-120%);
+  opacity:.55;
+  z-index:0;
+  pointer-events:none;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn.cooldown-running{
+  opacity:1 !important;
+  filter:none !important;
+  cursor:not-allowed !important;
+  background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,41,59,.94)) !important;
+  border-color:rgba(34,197,94,.45) !important;
+  box-shadow:0 0 24px rgba(34,197,94,.18), inset 0 0 18px rgba(15,23,42,.55) !important;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn.cooldown-running::before{
+  opacity:1;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn.cooldown-running::after{
+  animation:fakeProductivitySweep 1.8s ease-in-out infinite;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn .fake-productivity-label{
+  position:relative;
+  z-index:2;
+  display:block;
+  width:100%;
+  text-align:center;
+  pointer-events:none;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn .fake-productivity-label small{
+  display:block;
+  margin-top:4px;
+  font-size:10px;
+  line-height:1;
+  letter-spacing:.3px;
+  color:rgba(255,255,255,.82);
+}
+
+@keyframes fakeProductivitySweep{
+  0%{ transform:translateX(-120%); }
+  55%{ transform:translateX(120%); }
+  100%{ transform:translateX(120%); }
+}
+
+@media (max-width:700px){
+  #mainScreen .fake-productivity-row #playMiniBtn .fake-productivity-label small{
+    font-size:8px;
+    margin-top:3px;
+  }
+}
+
+
+
+    /* v78: title subtitle, x3 locked cooldown state, collection reward labels */
+    .title-block {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+
+    .game-subtitle {
+      font-size:11px;
+      line-height:1.2;
+      font-weight:750;
+      letter-spacing:.15px;
+      color:rgba(203,213,225,.84);
+      max-width:430px;
+      text-shadow:0 0 12px rgba(34,211,238,.16);
+    }
+
+    #speedBoostBtn:disabled,
+    #speedBoostBtn.speed-locked {
+      opacity:.52 !important;
+      filter:grayscale(.8) brightness(.72) !important;
+      cursor:not-allowed !important;
+      pointer-events:none !important;
+      background:linear-gradient(135deg,rgba(71,85,105,.82),rgba(15,23,42,.92)) !important;
+      border-color:rgba(148,163,184,.42) !important;
+      color:rgba(226,232,240,.86) !important;
+      box-shadow:inset 0 0 18px rgba(255,255,255,.06), 0 0 14px rgba(15,23,42,.34) !important;
+      animation:none !important;
+    }
+
+    #speedBoostBtn.speed-locked span:first-child {
+      color:rgba(226,232,240,.9) !important;
+    }
+
+    #speedBoostBtn.speed-locked span:last-child {
+      color:rgba(203,213,225,.74) !important;
+    }
+
+    .rarity-reward {
+      opacity:.56;
+      font-size:.86em;
+      font-weight:850;
+      color:#fde68a;
+      white-space:nowrap;
+    }
+
+    .rarity-reward.claimed {
+      opacity:.48;
+      color:#94a3b8;
+      text-decoration:line-through;
+      text-decoration-thickness:2px;
+    }
+
+    @media (max-width:700px){
+      .logo-wrap {
+        align-items:flex-start !important;
+      }
+
+      .title-block {
+        gap:3px;
+      }
+
+      .game-subtitle {
+        font-size:9.5px;
+        max-width:235px;
+        line-height:1.15;
+      }
+
+      .rarity-reward {
+        display:inline-block;
+        font-size:.78em;
+      }
+    }
 </style>
 <!--
 Supabase SQL needed:
@@ -3823,7 +3988,10 @@ using (true);
       <div class="topbar">
         <div class="logo-wrap">
           <div class="back-arrow" id="topBackArrow">←</div>
-          <div class="title">REMOTE WORKER</div>
+          <div class="title-block">
+            <div class="title">REMOTE WORKER - SPEED TCG</div>
+            <div class="game-subtitle">Open packs, collect 30 remote-worker cards, scrap duplicates, earn coins, and climb the speed leaderboard.</div>
+          </div>
         </div>
         <div class="profile">
           <div id="playerName">Pilot</div>
@@ -3836,9 +4004,9 @@ using (true);
         <div class="completed-panel" id="collectedPanel">
           <div class="collection-total">0/30 Cards</div>
           <div class="collection-rarity-lines">
-            <div class="common">0/16 Common</div>
-            <div class="rare">0/10 Rare</div>
-            <div class="epic">0/3 Epic</div>
+            <div class="common">0/16 Common <span class="rarity-reward">· reward +500 🪙</span></div>
+            <div class="rare">0/10 Rare <span class="rarity-reward">· reward +1000 🪙</span></div>
+            <div class="epic">0/3 Epic <span class="rarity-reward">· reward +2500 🪙</span></div>
             <div class="legendary">0/1 Legendary</div>
           </div>
         </div>
@@ -3944,12 +4112,6 @@ using (true);
         <div class="panel">
           <h2>Remote Worker Collection</h2>
           <div class="small" id="progressText">0/30 gesammelt</div>
-          <div class="setbar">
-            <div class="setbox" id="set1">Collect all Common Cards<br>Reward: +500 Coins · open</div>
-            <div class="setbox" id="set2">Collect all Rare Cards<br>Reward: +1000 Coins · open</div>
-            <div class="setbox" id="set3">Collect all Epic Cards<br>Reward: +2500 Coins · open</div>
-          </div>
-
           
         </div>
         <div class="panel">
@@ -4334,6 +4496,11 @@ using (true);
       return total;
     }
 
+    function rewardLabel(key, amount){
+      const isClaimed = !!claimed[key];
+      return `<span class="rarity-reward ${isClaimed ? "claimed" : ""}">· reward +${amount} 🪙${isClaimed ? " ✓" : ""}</span>`;
+    }
+
     function updateCollectedPanel(){
       let total = 0;
 
@@ -4364,9 +4531,9 @@ using (true);
         <div class="collection-total">✅ ${total}/30 Cards</div>
 
         <div class="collection-rarity-lines">
-          <div class="common">${common}/16 Common${commonDone}</div>
-          <div class="rare">${rare}/10 Rare${rareDone}</div>
-          <div class="epic">${epic}/3 Epic${epicDone}</div>
+          <div class="common">${common}/16 Common${commonDone} ${rewardLabel("all-common", 500)}</div>
+          <div class="rare">${rare}/10 Rare${rareDone} ${rewardLabel("all-rare", 1000)}</div>
+          <div class="epic">${epic}/3 Epic${epicDone} ${rewardLabel("all-epic", 2500)}</div>
           <div class="legendary">${legendary}/1 Legendary${legendaryDone}</div>
         </div>
       `;
@@ -4609,6 +4776,12 @@ using (true);
     }
 
     function activateSpeedBoost(){
+      if(hasActiveSpeedBoost()){
+        updateSpeedBoostButton();
+        showToast("x3 SPEED läuft bereits");
+        return;
+      }
+
       window.open("https://www.effectivecpmnetwork.com/qs0kv921?key=e9d1e6b490c9aa5efdc07b1b1d94a17a", "_blank", "noopener,noreferrer");
 
       speedBoostUntil = Date.now() + SPEED_BOOST_DURATION_MS;
@@ -4616,7 +4789,6 @@ using (true);
       save();
       updateSpeedBoostButton();
       updateCooldownUI();
-      updateSpeedBoostButton();
 
       showToast("x3 Speed aktiviert · 10 Sekunden Cooldown für 10 Minuten");
     }
@@ -4627,29 +4799,45 @@ using (true);
 
       if(hasActiveSpeedBoost()){
         const left = speedBoostUntil - Date.now();
-        btn.innerHTML = `<span>x3 SPEED</span><span>${formatBoostTimer(left)}</span>`;
-        btn.classList.add("active");
+        btn.innerHTML = `<span>x3 ACTIVE</span><span>WAIT ${formatBoostTimer(left)}</span>`;
+        btn.classList.add("active", "speed-locked");
+        btn.disabled = true;
+        btn.setAttribute("aria-disabled", "true");
+        btn.title = "x3 SPEED is already active";
       } else {
         btn.innerHTML = `<span>WATCH AD</span><span>x3 SPEED<br>10 MINS</span>`;
-        btn.classList.remove("active");
+        btn.classList.remove("active", "speed-locked");
+        btn.disabled = false;
+        btn.removeAttribute("aria-disabled");
+        btn.title = "Watch an ad to activate x3 fake productivity speed";
       }
     }
 
     function updateCooldownUI(){
       const btn = document.getElementById("playMiniBtn");
       const text = document.getElementById("cooldownText");
-      const remaining = currentCoinCooldown() - (Date.now() - lastCoinClaim);
+      const cooldown = currentCoinCooldown();
+      const elapsed = Date.now() - lastCoinClaim;
+      const remaining = cooldown - elapsed;
 
       if(!btn) return;
 
       if(remaining > 0){
         const seconds = Math.ceil(remaining / 1000);
+        const progress = Math.max(0, Math.min(100, (remaining / cooldown) * 100));
+
         btn.disabled = true;
-        btn.textContent = `FAKE PRODUCTIVITY (${seconds}s)`;
+        btn.classList.add("cooldown-running");
+        btn.style.setProperty("--cooldown-progress", `${progress}%`);
+        btn.innerHTML = `<span class="fake-productivity-label">FAKE PRODUCTIVITY (${seconds}s)<small>${hasActiveSpeedBoost() ? "x3 SPEED ACTIVE" : "COOLDOWN"}</small></span>`;
+
         if(text) text.textContent = `Trainingsmission lädt noch ${seconds}s.`;
       } else {
         btn.disabled = false;
-        btn.textContent = "FAKE PRODUCTIVITY (+250)";
+        btn.classList.remove("cooldown-running");
+        btn.style.setProperty("--cooldown-progress", "0%");
+        btn.innerHTML = `<span class="fake-productivity-label">FAKE PRODUCTIVITY (+250)</span>`;
+
         if(text) text.textContent = "";
       }
     }
@@ -5113,7 +5301,14 @@ using (true);
     const bulkScrapMainBtn = document.getElementById("bulkScrapMainBtn");
     if(bulkScrapMainBtn) bulkScrapMainBtn.addEventListener("click", scrapAllDuplicates);
     document.getElementById("newRunBtn").addEventListener("click", startNextRun);
-    document.getElementById("speedBoostBtn").addEventListener("click", activateSpeedBoost);
+    document.getElementById("speedBoostBtn").addEventListener("click", (event)=>{
+      if(hasActiveSpeedBoost()){
+        event.preventDefault();
+        updateSpeedBoostButton();
+        return;
+      }
+      activateSpeedBoost();
+    });
     document.getElementById("resetBtn").addEventListener("click",()=>{
       if(confirm("Profil wirklich löschen?")){
         localStorage.clear();
