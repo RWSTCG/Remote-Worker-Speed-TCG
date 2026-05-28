@@ -4443,6 +4443,7 @@ using (true);
             <div class="game-subtitle">Open packs, collect 30 remote-worker cards, scrap duplicates, earn coins, and climb the speed leaderboard.</div>
             <div class="leaderboard-main-wrap leaderboard-header-wrap">
               <button class="leaderboard-main-btn" id="leaderboardBtn">🏆 CHECK GLOBAL LEADERBOARD</button>
+              <div class="main-rank-pill" id="mainRankPill">🏆 Rank: Unranked</div>
             </div>
           </div>
         </div>
@@ -5238,6 +5239,7 @@ using (true);
         document.getElementById("gameScreen").classList.remove("hidden");
         document.getElementById("playerName").textContent = `User: ${playerName}`;
         updateCoins();
+        updateMainRankPill();
       } else {
         document.getElementById("loginScreen").classList.remove("hidden");
         document.getElementById("gameScreen").classList.add("hidden");
@@ -5632,6 +5634,43 @@ using (true);
       return Number.isFinite(total) ? total : null;
     }
 
+    async function updateMainRankPill(){
+      const pill = document.getElementById("mainRankPill");
+      if(!pill) return;
+
+      pill.textContent = "🏆 Rank: ...";
+
+      try{
+        const myEntry = await fetchMyLeaderboardEntry();
+        if(!myEntry){
+          pill.textContent = "🏆 Rank: Unranked";
+          return;
+        }
+
+        const betterCount = await fetchBetterLeaderboardCount(myEntry);
+        if(Number.isFinite(betterCount)){
+          pill.textContent = `🏆 Rank: ${betterCount + 1}`;
+          return;
+        }
+
+        const rows = await fetchLeaderboardRows();
+        const sorted = rows
+          .sort((a,b)=>{
+            if(b.maxTier !== a.maxTier) return b.maxTier - a.maxTier;
+            return a.totalTime - b.totalTime;
+          })
+          .map((row,index)=>({...row, rank:index + 1}));
+
+        const me = sorted.find(row=>row.username === playerName);
+        pill.textContent = me
+          ? `🏆 Rank: ${me.rank}`
+          : "🏆 Rank: Unranked";
+      }catch(error){
+        console.warn("Main rank pill update failed", error);
+        pill.textContent = "🏆 Rank: Unranked";
+      }
+    }
+
     async function submitLeaderboardScore(){
       const maxTier = completedTierForLeaderboard();
       if(maxTier < 0) return;
@@ -5777,6 +5816,7 @@ using (true);
       document.getElementById("leaderboardScreen").classList.remove("hidden");
       document.getElementById("topBackArrow").style.display = "flex";
       await renderLeaderboard();
+      updateMainRankPill();
     }
 
     function showAlbum(){
@@ -5796,6 +5836,7 @@ using (true);
       if(leaderboardScreen) leaderboardScreen.classList.add("hidden");
       document.getElementById("mainScreen").classList.remove("hidden");
       document.getElementById("topBackArrow").style.display = "none";
+      updateMainRankPill();
     }
 
     function renderAlbum(){
@@ -6637,6 +6678,123 @@ using (true);
     width: 92px !important;
     font-size: 8.5px !important;
     line-height: 1.1 !important;
+  }
+}
+
+
+/* v92: main menu rank pill next to leaderboard button */
+.leaderboard-header-wrap{
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:10px !important;
+  width:auto !important;
+  max-width:none !important;
+  flex-wrap:wrap !important;
+}
+
+.leaderboard-header-wrap .leaderboard-main-btn{
+  width:auto !important;
+  flex:0 0 auto !important;
+}
+
+.main-rank-pill{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:38px !important;
+  padding:8px 13px !important;
+  border-radius:12px !important;
+  background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(30,41,59,.82)) !important;
+  border:1px solid rgba(250,204,21,.32) !important;
+  color:#fef3c7 !important;
+  font-size:12px !important;
+  font-weight:950 !important;
+  letter-spacing:.2px !important;
+  white-space:nowrap !important;
+  box-shadow:0 0 18px rgba(250,204,21,.14), inset 0 0 12px rgba(250,204,21,.08) !important;
+  text-shadow:0 0 10px rgba(250,204,21,.22) !important;
+}
+
+@media (max-width:700px){
+  .leaderboard-header-wrap{
+    gap:7px !important;
+    max-width:100% !important;
+  }
+
+  .main-rank-pill{
+    min-height:32px !important;
+    padding:7px 10px !important;
+    font-size:10px !important;
+    border-radius:10px !important;
+  }
+}
+
+
+/* v94: final compact leaderboard + rank one-line header */
+.leaderboard-main-wrap.leaderboard-header-wrap{
+  display:inline-flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:8px !important;
+  width:auto !important;
+  max-width:none !important;
+  margin-top:6px !important;
+  flex-wrap:nowrap !important;
+}
+
+.leaderboard-main-wrap.leaderboard-header-wrap .leaderboard-main-btn{
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  min-height:38px !important;
+  height:38px !important;
+  padding:0 16px !important;
+  margin:0 !important;
+  white-space:nowrap !important;
+}
+
+.leaderboard-main-wrap.leaderboard-header-wrap .main-rank-pill{
+  flex:0 0 auto !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:38px !important;
+  height:38px !important;
+  padding:0 12px !important;
+  margin:0 !important;
+  border-radius:12px !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+  background:linear-gradient(135deg, rgba(15,23,42,.94), rgba(30,41,59,.78)) !important;
+  border:1px solid rgba(250,204,21,.38) !important;
+  color:#fef3c7 !important;
+  box-shadow:0 0 14px rgba(250,204,21,.16), inset 0 0 10px rgba(250,204,21,.08) !important;
+  text-shadow:0 0 8px rgba(250,204,21,.20) !important;
+}
+
+@media (max-width:700px){
+  .leaderboard-main-wrap.leaderboard-header-wrap{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:7px !important;
+    max-width:100% !important;
+  }
+
+  .leaderboard-main-wrap.leaderboard-header-wrap .leaderboard-main-btn{
+    min-height:34px !important;
+    height:34px !important;
+    padding:0 11px !important;
+    font-size:10px !important;
+  }
+
+  .leaderboard-main-wrap.leaderboard-header-wrap .main-rank-pill{
+    min-height:34px !important;
+    height:34px !important;
+    padding:0 10px !important;
+    font-size:9.5px !important;
   }
 }
 </style>
