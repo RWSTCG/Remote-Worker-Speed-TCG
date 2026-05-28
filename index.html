@@ -4056,6 +4056,149 @@ body{
   }
 }
 
+
+
+/* vFinal: remove extra HTML coin price bars under pack artworks; prices remain baked into artwork images */
+#mainScreen .showcase-pack > .booster-price {
+  display: none !important;
+}
+#mainScreen .showcase-pack {
+  padding-bottom: 0 !important;
+}
+
+
+
+/* v83: single premium coin display in pack title row */
+#coins.coins,
+#coins,
+.profile #coins{
+  display:none !important;
+}
+
+.profile{
+  min-width:auto !important;
+}
+
+#playerName{
+  color:#dbeafe !important;
+  opacity:.9 !important;
+  font-size:11px !important;
+  font-weight:850 !important;
+}
+
+#mainScreen .stage-title{
+  position:relative !important;
+  padding-right:112px !important;
+}
+
+#mainScreen .pack-title-coins{
+  position:absolute !important;
+  right:0 !important;
+  top:50% !important;
+  transform:translateY(-50%) !important;
+  min-width:104px !important;
+  height:42px !important;
+  padding:8px 15px !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:7px !important;
+  border-radius:999px !important;
+  font-size:18px !important;
+  font-weight:950 !important;
+  line-height:1 !important;
+  color:#fff7cc !important;
+  letter-spacing:.25px !important;
+  background:linear-gradient(135deg, rgba(251,191,36,.22), rgba(15,23,42,.92) 48%, rgba(2,6,23,.96)) !important;
+  border:2px solid rgba(250,204,21,.55) !important;
+  box-shadow:
+    0 0 22px rgba(250,204,21,.34),
+    0 10px 26px rgba(0,0,0,.34),
+    inset 0 0 18px rgba(250,204,21,.12) !important;
+  text-shadow:0 0 10px rgba(250,204,21,.55) !important;
+  z-index:12 !important;
+}
+
+#mainScreen .pack-title-coins::before{
+  content:"COINS";
+  position:absolute;
+  top:-9px;
+  right:12px;
+  padding:2px 7px;
+  border-radius:999px;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.8px;
+  color:#111827;
+  background:linear-gradient(135deg,#fde68a,#f59e0b);
+  box-shadow:0 0 12px rgba(250,204,21,.52);
+  text-shadow:none;
+}
+
+#mainScreen .pack-title-coins.pack-coin-pop{
+  animation:packCoinPop .34s ease-out;
+}
+
+@keyframes packCoinPop{
+  0%{ transform:translateY(-50%) scale(1); filter:brightness(1); }
+  45%{ transform:translateY(-50%) scale(1.105); filter:brightness(1.35); box-shadow:0 0 36px rgba(250,204,21,.68), 0 10px 26px rgba(0,0,0,.34), inset 0 0 24px rgba(250,204,21,.22); }
+  100%{ transform:translateY(-50%) scale(1); filter:brightness(1); }
+}
+
+@media (max-width:700px){
+  #mainScreen .stage-title{
+    padding-right:78px !important;
+    font-size:14px !important;
+    gap:7px !important;
+  }
+
+  #mainScreen .stage-title span{
+    max-width:34px !important;
+  }
+
+  #mainScreen .pack-title-coins{
+    min-width:70px !important;
+    height:32px !important;
+    padding:6px 8px !important;
+    font-size:12px !important;
+    border-width:1px !important;
+    right:0 !important;
+  }
+
+  #mainScreen .pack-title-coins::before{
+    top:-8px;
+    right:6px;
+    font-size:6px;
+    padding:1px 5px;
+  }
+}
+
+
+
+/* v65: clean focused Global Leaderboard page */
+#gameScreen.leaderboard-mode .leaderboard-header-wrap,
+#gameScreen.leaderboard-mode .status-row {
+  display: none !important;
+}
+
+#gameScreen.leaderboard-mode .topbar {
+  margin-bottom: 14px !important;
+}
+
+#gameScreen.leaderboard-mode .leaderboard-panel {
+  margin-top: 6px !important;
+}
+
+#gameScreen.leaderboard-mode .title-block {
+  max-width: 100% !important;
+}
+
+@media (max-width:700px){
+  #gameScreen.leaderboard-mode .topbar {
+    margin-bottom: 10px !important;
+  }
+}
+
 </style>
 <!--
 Supabase SQL needed:
@@ -4082,6 +4225,205 @@ create policy "Anyone can update leaderboard"
 on leaderboard for update
 using (true);
 -->
+
+<style>
+/* v82: slightly smaller main-menu pack artwork display + coin icon polish */
+#mainScreen #packArea{
+  min-height: 505px !important;
+  height: 505px !important;
+  padding-top: 20px !important;
+  padding-bottom: 22px !important;
+}
+
+#mainScreen .pack-showcase{
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+#mainScreen .showcase-pack{
+  height: 420px !important;
+  transform: scale(.92) !important;
+  transform-origin: top center !important;
+}
+
+#mainScreen .showcase-pack:hover{
+  transform: scale(.94) translateY(-2px) !important;
+}
+
+#mainScreen #basicPackVisual::before,
+#mainScreen #advancedPackVisual::before,
+#mainScreen #elitePackVisual::before{
+  inset: 0 0 230px 0 !important;
+  background-size: contain !important;
+  background-position: center top !important;
+}
+
+#mainScreen .showcase-pack .pack-chance{
+  bottom: -70px !important;
+}
+
+#mainScreen .showcase-pack .booster-price{
+  bottom: -330px !important;
+}
+
+#mainScreen .fake-productivity-row #playMiniBtn .fake-productivity-label{
+  white-space: nowrap !important;
+}
+
+@media (max-width:700px){
+  #mainScreen #packArea{
+    min-height: 470px !important;
+    height: 470px !important;
+    padding-top: 16px !important;
+  }
+
+  #mainScreen .pack-showcase{
+    gap: 4px !important;
+  }
+
+  #mainScreen .showcase-pack{
+    height: 340px !important;
+    transform: scale(.9) !important;
+  }
+
+  #mainScreen .showcase-pack:hover{
+    transform: scale(.91) translateY(-1px) !important;
+  }
+
+  #mainScreen #basicPackVisual::before,
+  #mainScreen #advancedPackVisual::before,
+  #mainScreen #elitePackVisual::before{
+    inset: 0 0 195px 0 !important;
+  }
+
+  #mainScreen .showcase-pack .pack-chance{
+    bottom: -58px !important;
+  }
+
+  #mainScreen .showcase-pack .booster-price{
+    bottom: -278px !important;
+  }
+}
+</style>
+
+
+<style>
+/* v86 Torment labels + stronger resource display + header leaderboard */
+.title-block{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  gap:7px !important;
+}
+
+.leaderboard-header-wrap{
+  margin-top:4px !important;
+  width:auto !important;
+  max-width:360px !important;
+}
+
+.leaderboard-header-wrap .leaderboard-main-btn{
+  min-height:38px !important;
+  padding:9px 16px !important;
+  margin-top:0 !important;
+  font-size:12px !important;
+  border-radius:12px !important;
+  letter-spacing:.35px !important;
+  background:linear-gradient(135deg,#facc15,#fb923c) !important;
+  box-shadow:0 0 24px rgba(250,204,21,.28),0 8px 22px rgba(251,146,60,.20) !important;
+}
+
+.profile{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-end !important;
+  gap:6px !important;
+}
+
+#coins.coins{
+  position:relative !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-width:145px !important;
+  padding:12px 18px !important;
+  border-radius:18px !important;
+  font-size:20px !important;
+  font-weight:1000 !important;
+  color:#fff7c2 !important;
+  background:radial-gradient(circle at 28% 18%,rgba(255,255,255,.22),rgba(250,204,21,.18) 32%,rgba(15,23,42,.86) 78%) !important;
+  border:2px solid rgba(250,204,21,.48) !important;
+  box-shadow:0 0 28px rgba(250,204,21,.26), inset 0 0 18px rgba(250,204,21,.10), 0 10px 28px rgba(0,0,0,.28) !important;
+  text-shadow:0 0 12px rgba(250,204,21,.48) !important;
+  letter-spacing:.3px !important;
+}
+
+#coins.coins::before{
+  content:"COINS";
+  position:absolute;
+  top:-8px;
+  right:12px;
+  padding:2px 6px;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:950;
+  color:#111827;
+  background:#facc15;
+  box-shadow:0 0 12px rgba(250,204,21,.45);
+  letter-spacing:.7px;
+}
+
+#coins.coin-pop{
+  animation:coinResourcePop .28s ease-out;
+}
+
+@keyframes coinResourcePop{
+  0%{transform:scale(1)}
+  45%{transform:scale(1.075); filter:brightness(1.25)}
+  100%{transform:scale(1); filter:brightness(1)}
+}
+
+.badluck-panel-content{
+  letter-spacing:.15px !important;
+}
+
+@media (max-width:700px){
+  .topbar{
+    align-items:flex-start !important;
+    gap:8px !important;
+  }
+
+  .title-block{
+    gap:5px !important;
+  }
+
+  .leaderboard-header-wrap{
+    max-width:230px !important;
+  }
+
+  .leaderboard-header-wrap .leaderboard-main-btn{
+    min-height:32px !important;
+    padding:7px 10px !important;
+    font-size:10px !important;
+    border-radius:10px !important;
+  }
+
+  #coins.coins{
+    min-width:92px !important;
+    padding:10px 10px !important;
+    border-radius:14px !important;
+    font-size:14px !important;
+    border-width:1px !important;
+  }
+
+  #coins.coins::before{
+    top:-7px;
+    right:8px;
+    font-size:7px;
+    padding:1px 5px;
+  }
+}
+</style>
 </head>
 <body>
   <div class="app">
@@ -4099,11 +4441,13 @@ using (true);
           <div class="title-block">
             <div class="title">REMOTE WORKER - SPEED TCG</div>
             <div class="game-subtitle">Open packs, collect 30 remote-worker cards, scrap duplicates, earn coins, and climb the speed leaderboard.</div>
+            <div class="leaderboard-main-wrap leaderboard-header-wrap">
+              <button class="leaderboard-main-btn" id="leaderboardBtn">🏆 CHECK GLOBAL LEADERBOARD</button>
+            </div>
           </div>
         </div>
         <div class="profile">
           <div id="playerName">Pilot</div>
-          <div class="coins" id="coins">🪙 800</div>
         </div>
       </div>
 
@@ -4118,7 +4462,7 @@ using (true);
             <div class="legendary">0/1 Legendary</div>
           </div>
         </div>
-        <div class="badluck-panel" id="badLuckPanel"><span class="badluck-panel-content">T0: 0% Bad Luck Affix <button type="button" class="badluck-info-btn" id="badLuckInfoBtn" aria-label="Bad Luck Affix info">?</button></span></div>
+        <div class="badluck-panel" id="badLuckPanel"><span class="badluck-panel-content">Torment 0: 0% Bad Luck Affix <button type="button" class="badluck-info-btn" id="badLuckInfoBtn" aria-label="Bad Luck Affix info">?</button></span></div>
         <div class="tier-time-history" id="tierTimeHistory"></div>
       </div>
 
@@ -4139,7 +4483,6 @@ using (true);
                   <div class="booster-top">COFFEE BREAK</div>
                   <div class="booster-title">COFFEE<br>BREAK</div>
                   <div class="booster-robot">🤖</div>
-                  <div class="booster-price">🪙 100 COINS</div>
                   <div class="pack-chance">
                     <span>78% COMMON</span>
                     <span>18% RARE</span>
@@ -4151,7 +4494,6 @@ using (true);
                   <div class="booster-top">DEADLINE</div>
                   <div class="booster-title">DEADLINE<br>PACK</div>
                   <div class="booster-robot">🦾</div>
-                  <div class="booster-price">🪙 250 COINS</div>
                   <div class="pack-chance">
                     <span>45% COMMON</span>
                     <span>38% RARE</span>
@@ -4164,7 +4506,6 @@ using (true);
                   <div class="booster-top">OVERLORD</div>
                   <div class="booster-title">CORPORATE<br>OVERLORD</div>
                   <div class="booster-robot">🔥</div>
-                  <div class="booster-price">🪙 600 COINS</div>
                   <div class="pack-chance">
                     <span>15% COMMON</span>
                     <span>40% RARE</span>
@@ -4181,16 +4522,12 @@ using (true);
             <div id="bulkScrapMain"><button id="bulkScrapMainBtn">♻ SCRAP ALL DUPLICATES<br><span id="bulkScrapMainValue">+0 COINS</span></button></div>
             <button class="secondary" id="albumBtn">▣ CHECK MY COLLECTION</button>
             <div class="fake-productivity-row">
-              <button class="secondary" id="playMiniBtn">FAKE PRODUCTIVITY (+250)</button>
+              <button class="secondary" id="playMiniBtn">FAKE PRODUCTIVITY (+250 🪙)</button>
               <button id="speedBoostBtn" class="speed-boost-btn"><span>OPEN AD</span><span>x3 SPEED<br>3 MINS</span></button>
             </div>
           </div>
 
         </div>
-
-        <div class="leaderboard-main-wrap">
-            <button class="leaderboard-main-btn" id="leaderboardBtn">🏆 CHECK GLOBAL LEADERBOARD</button>
-          </div>
 
         <div class="panel hidden" id="resultPanel">
           
@@ -4203,7 +4540,7 @@ using (true);
         <div class="panel leaderboard-panel">
           <h2>Global Leaderboard</h2>
           <div class="small leaderboard-note">
-            Top 10 players ranked by highest completed T-level and total completion time.
+            Top 10 players ranked by highest completed Torment level and total completion time.
           </div>
 
           <div class="my-rank-card" id="myRankCard">
@@ -4561,7 +4898,7 @@ using (true);
 
     function showBadLuckInfo(){
       playSound("click");
-      showToast("Each T-level reduces Rare, Epic and Legendary odds by 5%. Lost odds move into Common cards.");
+      showToast("Each Torment level reduces Rare, Epic and Legendary odds by 5%. Lost odds move into Common cards.");
     }
 
 
@@ -4678,7 +5015,7 @@ using (true);
 
     function updateBadLuckUI(){
       const panel = document.getElementById("badLuckPanel");
-      if(panel) panel.innerHTML = `<span class="badluck-panel-content">T${badLuckTier}: ${badLuckTier * 5}% Bad Luck Affix <button type="button" class="badluck-info-btn" id="badLuckInfoBtn" aria-label="Bad Luck Affix info">?</button></span>`;
+      if(panel) panel.innerHTML = `<span class="badluck-panel-content">Torment ${badLuckTier}: ${badLuckTier * 5}% Bad Luck Affix <button type="button" class="badluck-info-btn" id="badLuckInfoBtn" aria-label="Bad Luck Affix info">?</button></span>`;
       updatePackChanceLabels();
     }
 
@@ -4688,7 +5025,7 @@ using (true);
       const tierText = document.getElementById("congratsTierText");
       const nextTier = badLuckTier + 1;
       if(text) text.textContent = "You collected all 30 cards. Start a new run and prove you can beat the office grind again.";
-      if(tierText) tierText.textContent = `Next run: T${nextTier} · ${nextTier * 5}% Bad Luck Affix`;
+      if(tierText) tierText.textContent = `Next run: Torment ${nextTier} · ${nextTier * 5}% Bad Luck Affix`;
       if(overlay) overlay.classList.add("show");
     }
 
@@ -4713,7 +5050,7 @@ using (true);
       updateSpeedBoostButton();
       updateRunTimer();
       updateBadLuckUI();
-      showToast(`New run started: T${badLuckTier} · ${badLuckTier * 5}% Bad Luck Affix · 800 Coins`);
+      showToast(`New run started: Torment ${badLuckTier} · ${badLuckTier * 5}% Bad Luck Affix · 800 Coins`);
     }
 
 
@@ -4723,7 +5060,7 @@ using (true);
 
       const elapsed = completionTime ? completionTime - runStartTime : Date.now() - runStartTime;
       history.classList.add("show");
-      history.innerHTML = `<div class="current-time-line">Current Time needed for T${badLuckTier}: ${formatTime(elapsed)}</div>`;
+      history.innerHTML = `<div class="current-time-line">Current Time needed for Torment ${badLuckTier}: ${formatTime(elapsed)}</div>`;
     }
 
     function updateRunTimer(){
@@ -4739,10 +5076,10 @@ using (true);
         ? tierTimes
             .map((ms, index)=>{
               const colorClass = index % 2 === 0 ? "tier-blue" : "tier-purple";
-              return `<div class="${colorClass}">T${index}: ${formatTime(ms)}</div>`;
+              return `<div class="${colorClass}">Torment ${index}: ${formatTime(ms)}</div>`;
             })
             .join("")
-        : `<div class="empty-record">No completed T records yet</div>`;
+        : `<div class="empty-record">No completed Torment records yet</div>`;
 
       timer.innerHTML = `
         <div class="time-record-title">⏱ Time Records</div>
@@ -4763,7 +5100,7 @@ using (true);
       tierTimes[badLuckTier] = completionTime - runStartTime;
       save();
       showCongratulations();
-      showToast(`T${badLuckTier} complete! Time: ${formatTime(tierTimes[badLuckTier])}`);
+      showToast(`Torment ${badLuckTier} complete! Time: ${formatTime(tierTimes[badLuckTier])}`);
       submitLeaderboardScore().catch(console.warn);
       updateRunTimer();
     }
@@ -4832,9 +5169,27 @@ using (true);
     }
 
     function updateCoins(){
-      document.getElementById("coins").textContent = `🪙 ${coins}`;
+      const coinEl = document.getElementById("coins");
+      if(coinEl){
+        const nextCoinText = `🪙 ${coins.toLocaleString ? coins.toLocaleString("en-US") : coins}`;
+        if(coinEl.textContent !== nextCoinText){
+          coinEl.textContent = nextCoinText;
+          coinEl.classList.remove("coin-pop");
+          void coinEl.offsetWidth;
+          coinEl.classList.add("coin-pop");
+        }
+      }
       const packTitleCoins = document.getElementById("packTitleCoins");
-      if(packTitleCoins) packTitleCoins.textContent = `🪙 ${coins}`;
+      if(packTitleCoins){
+        const formattedCoins = coins.toLocaleString ? coins.toLocaleString("en-US") : coins;
+        const nextPackCoinText = `🪙 ${formattedCoins}`;
+        if(packTitleCoins.textContent !== nextPackCoinText){
+          packTitleCoins.textContent = nextPackCoinText;
+          packTitleCoins.classList.remove("pack-coin-pop");
+          void packTitleCoins.offsetWidth;
+          packTitleCoins.classList.add("pack-coin-pop");
+        }
+      }
 
       const hasPending = pendingPull.length > 0;
 
@@ -5126,7 +5481,7 @@ using (true);
         btn.disabled = false;
         btn.classList.remove("cooldown-running");
         btn.style.setProperty("--cooldown-progress", "0%");
-        btn.innerHTML = `<span class="fake-productivity-label">FAKE PRODUCTIVITY (+250)</span>`;
+        btn.innerHTML = `<span class="fake-productivity-label">FAKE PRODUCTIVITY (+250 🪙)</span>`;
 
         if(text) text.textContent = "";
       }
@@ -5415,6 +5770,8 @@ using (true);
     }
 
     async function showLeaderboard(){
+      const gameScreen = document.getElementById("gameScreen");
+      if(gameScreen) gameScreen.classList.add("leaderboard-mode");
       document.getElementById("mainScreen").classList.add("hidden");
       document.getElementById("albumScreen").classList.add("hidden");
       document.getElementById("leaderboardScreen").classList.remove("hidden");
@@ -5423,6 +5780,8 @@ using (true);
     }
 
     function showAlbum(){
+      const gameScreen = document.getElementById("gameScreen");
+      if(gameScreen) gameScreen.classList.remove("leaderboard-mode");
       document.getElementById("mainScreen").classList.add("hidden");
       document.getElementById("albumScreen").classList.remove("hidden");
       document.getElementById("topBackArrow").style.display = "flex";
@@ -5430,6 +5789,8 @@ using (true);
     }
 
     function showMain(){
+      const gameScreen = document.getElementById("gameScreen");
+      if(gameScreen) gameScreen.classList.remove("leaderboard-mode");
       document.getElementById("albumScreen").classList.add("hidden");
       const leaderboardScreen = document.getElementById("leaderboardScreen");
       if(leaderboardScreen) leaderboardScreen.classList.add("hidden");
@@ -6167,4 +6528,115 @@ using (true);
   box-shadow:0 0 28px rgba(99,102,241,.45), 0 10px 30px rgba(34,211,238,.22) !important;
 }
 
+</style>
+
+
+<style>
+/* v83 final pack layout fix: medium pack size + odds directly under packs */
+#mainScreen #packArea{
+  min-height: 430px !important;
+  height: 430px !important;
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+  overflow: hidden !important;
+}
+
+#mainScreen .pack-content{
+  gap: 12px !important;
+}
+
+#mainScreen .pack-showcase{
+  gap: 18px !important;
+  margin-top: 0 !important;
+  align-items: start !important;
+}
+
+#mainScreen .showcase-pack{
+  width: 100% !important;
+  height: 310px !important;
+  max-width: 150px !important;
+  transform: none !important;
+  transform-origin: top center !important;
+}
+
+#mainScreen .showcase-pack:hover{
+  transform: translateY(-2px) scale(1.025) !important;
+}
+
+#mainScreen #basicPackVisual::before,
+#mainScreen #advancedPackVisual::before,
+#mainScreen #elitePackVisual::before{
+  inset: 0 0 80px 0 !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+}
+
+#mainScreen .showcase-pack .booster-price{
+  bottom: 44px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  min-width: 94px !important;
+  width: auto !important;
+  font-size: 10px !important;
+  padding: 6px 9px !important;
+  z-index: 8 !important;
+}
+
+#mainScreen .showcase-pack .pack-chance{
+  bottom: -14px !important;
+  left: 50% !important;
+  right: auto !important;
+  width: 112px !important;
+  transform: translateX(-50%) !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+}
+
+@media (max-width:700px){
+  #mainScreen #packArea{
+    min-height: 360px !important;
+    height: 360px !important;
+    padding-top: 14px !important;
+    padding-bottom: 14px !important;
+  }
+
+  #mainScreen .pack-content{
+    gap: 9px !important;
+  }
+
+  #mainScreen .pack-showcase{
+    gap: 8px !important;
+  }
+
+  #mainScreen .showcase-pack{
+    height: 240px !important;
+    max-width: 96px !important;
+    transform: none !important;
+  }
+
+  #mainScreen .showcase-pack:hover{
+    transform: translateY(-1px) scale(1.015) !important;
+  }
+
+  #mainScreen #basicPackVisual::before,
+  #mainScreen #advancedPackVisual::before,
+  #mainScreen #elitePackVisual::before{
+    inset: 0 0 66px 0 !important;
+  }
+
+  #mainScreen .showcase-pack .booster-price{
+    bottom: 38px !important;
+    min-width: 70px !important;
+    font-size: 8px !important;
+    padding: 5px 6px !important;
+  }
+
+  #mainScreen .showcase-pack .pack-chance{
+    bottom: -12px !important;
+    width: 92px !important;
+    font-size: 8.5px !important;
+    line-height: 1.1 !important;
+  }
+}
 </style>
